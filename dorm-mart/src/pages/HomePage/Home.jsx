@@ -15,18 +15,21 @@ const Home = () => {
       title: "Freedom on My Mind- 3rd Edition",
       price: "$40",
       img: id1,
+      tags: ["Textbook", "History", "College"],
     },
     {
       id: 2,
-      title: "Freedom on My Mind- 3rd Edition",
+      title: "Small Carpet",
       price: "$40",
       img: id2,
+      tags: ["Rug", "Dorm Decor", "Soft"],
     },
     {
       id: 3,
-      title: "Freedom on My Mind- 3rd Edition",
+      title: "Hard Drive",
       price: "$40",
       img: id3,
+      tags: ["Electronics", "Storage", "1TB"],
     },
   ];
   return (
