@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import {RouterProvider, createHashRouter } from "react-router-dom";
 import RootLayout from "./pages/RootLayout";
 import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage";
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
@@ -12,17 +12,12 @@ import ProductListingPage from "./pages/ProductListing/ProductListingPage";
  The part after # (/app/purchase-history) is handled by JS routing in client-side */
 
 export const router = createHashRouter([
-  // Login is the default route
-  {
-    path: "/",
-    element: <LoginPage />,
-  },
   // Main application lives under /app
   {
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <HomePage /> },
+      //{ index: true, element: <HomePage /> },
       {
         path: "/product-listing",
         children: [

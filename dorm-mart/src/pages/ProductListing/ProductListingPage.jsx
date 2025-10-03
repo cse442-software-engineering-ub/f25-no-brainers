@@ -17,7 +17,7 @@ function ProductListingPage() {
   const isEdit = Boolean(id);
   const isNew = Boolean(matchNew);
   const isIndex = !isEdit && !isNew;
-
+  
   const defaultForm = {
     title: "Shower Caddy",
     category: "Dorm",
@@ -181,7 +181,7 @@ function ProductListingPage() {
                 <option>North Campus</option>
                 <option>South Campus</option>
               </select>  
-              
+
               <label className="block text-xl font-semibold mt-6 mb-2">Item Condition</label>
               <select value={condition} onChange={(e) => setCondition(e.target.value)} className="w-full p-3 border rounded-lg">
                 <option>Like New</option>
