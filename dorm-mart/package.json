@@ -2,6 +2,10 @@
   "name": "dorm-mart",
   "version": "0.1.0",
   "private": true,
+<<<<<<< HEAD
+=======
+  "homepage": "/CSE442/2025-Fall/cse-442j",
+>>>>>>> 517136effefcd025e5f650cf24601f9320eaa781
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
@@ -41,5 +45,10 @@
   "devDependencies": {
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6"
+<<<<<<< HEAD
   }
+=======
+  },
+  "proxy": "http://localhost:8080"
+>>>>>>> 517136effefcd025e5f650cf24601f9320eaa781
 }
