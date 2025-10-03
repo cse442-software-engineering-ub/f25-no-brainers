@@ -1,4 +1,4 @@
-import { createHashRouter, RouterProvider } from 'react-router-dom'
+import { createHashRouter, RouterProvider, Navigate } from 'react-router-dom'
 import RootLayout from './pages/RootLayout';
 import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
@@ -12,9 +12,14 @@ import PurchaseHistoryLayout from './pages/PurchaseHistory/PurchaseHistoryLayout
  The part after # (/app/purchase-history) is handled by JS routing in client-side */
 
 export const router = createHashRouter([
-  // Login is the default route
+  // Redirect root to /app so the base URL shows the Home page
   {
     path: "/",
+    element: <Navigate to="/app" replace />,
+  },
+  // Keep a login route available at /login
+  {
+    path: "/login",
     element: <LoginPage />,
   },
   // Main application lives under /app
@@ -35,3 +40,6 @@ export const router = createHashRouter([
   },
 ]);
 
+export default function App() {
+  return <RouterProvider router={router} />;
+}

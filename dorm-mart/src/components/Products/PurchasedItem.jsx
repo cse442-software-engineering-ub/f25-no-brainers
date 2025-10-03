@@ -1,23 +1,12 @@
 import { Link } from "react-router-dom";
-<<<<<<< HEAD
-import puppy from '../../assets/icons/puppy.jpg'
-
-
-function PurchasedItem({ id, title, seller, date}) {
-=======
 
 function PurchasedItem({ id, title, seller, date, image}) {
 
->>>>>>> 517136effefcd025e5f650cf24601f9320eaa781
     return <>
       <li className="flex items-stretch justify-between p-4 border rounded-lg bg-gray-200 shadow">
         {/* Left: image */}
         <img
-<<<<<<< HEAD
-          src={puppy}
-=======
           src={image}
->>>>>>> 517136effefcd025e5f650cf24601f9320eaa781
           alt="Item"
           className="h-40 w-40 object-cover rounded"
         />
@@ -37,13 +26,8 @@ function PurchasedItem({ id, title, seller, date, image}) {
         {/* Right: button */}
       <Link
         to={`item-detail/${id}`}
-<<<<<<< HEAD
-        state={{ id: id, title: title, seller: seller, date: date }}
-        className="self-center ml-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-=======
         state={{ id: id, title: title, seller: seller, date: date, image: image }}
         className="self-center ml-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
->>>>>>> 517136effefcd025e5f650cf24601f9320eaa781
       >
         View Details
       </Link>
