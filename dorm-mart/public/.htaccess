@@ -1,0 +1,19 @@
+Options -MultiViews
+RewriteEngine On
+
+# Base path where this app is hosted
+RewriteBase /CSE442/2025-Fall/cse-442j/
+
+# Serve existing files/directories as-is
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Do not rewrite API calls (handled by PHP/backend)
+RewriteRule ^api/ - [L]
+
+# SPA fallback: send everything else to index.html
+RewriteRule ^ index.html [L]
+
+# Additionally, if rewrites are restricted, use 404 fallback to index.html
+ErrorDocument 404 /CSE442/2025-Fall/cse-442j/index.html
