@@ -5,6 +5,10 @@ RewriteEngine On
 # Base path where this app is hosted
 RewriteBase /CSE442/2025-Fall/cse-442j/
 
+# Redirect clean route names to their folder with trailing slash (helps when DirectoryIndex is ignored)
+RewriteRule ^landing$ landing/ [L,R=302]
+RewriteRule ^userpreferences$ userpreferences/ [L,R=302]
+
 # Serve existing files/directories as-is
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
