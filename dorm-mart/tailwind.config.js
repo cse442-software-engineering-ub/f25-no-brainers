@@ -1,8 +1,6 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-  ],
+export default {
+  content: ["./public/index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
       colors: {
@@ -31,8 +29,13 @@ module.exports = {
       },
       borderColor: {
         input: "hsl(var(--input))",
-      }
+      },
+      fontFamily: {
+        sirin: ['"Sirin Stencil"', "serif"],
+        tai: ['"Tai Heritage Pro"', "serif"],
+        taprom: ["Taprom", "cursive"],
+      },
     },
   },
   plugins: [],
-}
+};
