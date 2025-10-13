@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Input } from '../../components/ui/input'
 import { Button } from '../../components/ui/button'
@@ -15,6 +15,8 @@ export default function UserPreferences(){
   });
   const [interestQuery, setInterestQuery] = useState('');
   const [theme, setTheme] = useState(() => localStorage.getItem('prefs.theme') || 'light');
+  const loadedFromBackendRef = useRef(false); // prevent POST right after GET hydration
+  const BASE = process.env.REACT_APP_API_BASE || '/api';
 
   // persist
   useEffect(() => { localStorage.setItem('prefs.promoEmails', String(promoEmails)); }, [promoEmails]);
@@ -46,6 +48,55 @@ export default function UserPreferences(){
       root.style.removeProperty('--input');
     }
   }, [theme]);
+
+  // Load from backend on mount (if authenticated). Falls back silently on error/401
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE}/userPreferences.php`, { method: 'GET', credentials: 'include' });
+        if (!res.ok) return; // 401/503 -> keep local values
+        const json = await res.json();
+        if (!json || json.ok !== true || !json.data) return;
+        const { promoEmails: p = false, interests: i = [], theme: t = 'light' } = json.data;
+        if (cancelled) return;
+        loadedFromBackendRef.current = true; // mark hydration to skip next save
+        setPromoEmails(!!p);
+        setInterests(Array.isArray(i) ? i : []);
+        setTheme(t === 'dark' ? 'dark' : 'light');
+      } catch (e) {
+        // ignore network errors; keep local
+        console.warn('prefs: backend load failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save to backend whenever values change (skip immediately after hydration)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (loadedFromBackendRef.current) {
+        // Skip the first cycle after hydration, then allow future saves
+        loadedFromBackendRef.current = false;
+        return;
+      }
+      try {
+        const body = { promoEmails, interests, theme };
+        await fetch(`${BASE}/userPreferences.php`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+      } catch (e) {
+        if (!cancelled) console.warn('prefs: backend save failed', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promoEmails, JSON.stringify(interests), theme]);
 
   function addInterest() {
     const t = interestQuery.trim();
