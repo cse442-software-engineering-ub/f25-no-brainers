@@ -5,14 +5,16 @@ import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
 import puppy from "../../assets/icons/puppy.jpg";
 
+// If you add public/static images, you can construct their URL like below, but currently
+// the referenced smallcarpet.png does not exist in the deployed build, causing 404.
+// We use a tiny inline placeholder instead to avoid console noise.
 const PUBLIC_BASE = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
-// Expect the file at: public/assets/product-images/smallcarpet.png
-const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
+const placeholderImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAHdJREFUeNrs0cENgCAQBVC9/5+FQ6bCBgq2YB4JJ1IOmG7f1fyAzwAAwMDAQEBAgICAv4BvZjX4dV9G2wBcbYArhsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA7hsA/hNTAAEGAM0nA2AIgO3yAAAAAElFTkSuQmCC';
 
 // local fallback data to show something if API is down
 const FALLBACK_ITEMS = [
   { id: 1, title: "Wireless Keyboard", price: 40, img: keyboard, tags: ["Electronics", "Accessories"], seller: "Ava P.", rating: 4.8, location: "North Campus", status: "JUST POSTED" },
-  { id: 2, title: "Small Carpet (5x7)", price: 25, img: carpetUrl, tags: ["Furniture", "Decor"], seller: "Mark D.", rating: 4.4, location: "Ellicott", status: "AVAILABLE" },
+  { id: 2, title: "Small Carpet (5x7)", price: 25, img: placeholderImg, tags: ["Furniture", "Decor"], seller: "Mark D.", rating: 4.4, location: "Ellicott", status: "AVAILABLE" },
   { id: 3, title: "Wireless Mouse", price: 30, img: mouse, tags: ["Electronics", "Accessories"], seller: "Sara T.", rating: 4.9, location: "South Campus", status: "PRICE DROP" },
 ];
 
@@ -28,6 +30,19 @@ export default function LandingPage() {
         setLoading(true);
         const PUBLIC = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
         const BASE = process.env.REACT_APP_API_BASE || `${PUBLIC}/api`;
+        // Allow forcing an error to test frontend fallback without blocking the entire domain.
+        // Usage: append `?forceListingsError=1` to the URL (after the hash route), e.g.
+        // https://.../#/app?forceListingsError=1
+        let forceError = false;
+        try {
+          if (typeof window !== 'undefined') {
+            const usp = new URLSearchParams(window.location.search);
+            forceError = usp.has('forceListingsError');
+          }
+        } catch (_) {}
+        if (forceError) {
+          throw new Error('Forced listings error (testing fallback)');
+        }
         const r = await fetch(`${BASE}/landingListings.php`, { signal: controller.signal });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const data = await r.json();
