@@ -1,0 +1,14 @@
+# Turn on mod_rewrite in this folder
+RewriteEngine On
+
+# If the requested path is an existing FILE or DIRECTORY, serve it directly.
+# -f : request maps to real file (e.g., ping.php, style.css)
+# -d : request maps to real directory
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]   # stop rewriting; serve as-is
+
+# Otherwise, route everything (e.g., /api/ping) to index.php with ?path=...
+# ^(.+)$ captures the whole path after /api/
+# index.php?path=$1 lets your router decide which handler to include
+RewriteRule ^(.+)$ index.php?path=$1 [QSA,L]

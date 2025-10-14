@@ -4,17 +4,16 @@ import { useEffect, useState } from 'react';
 
 
 async function fetchPurchasedItems(year, signal) {
-  const BASE = (process.env.REACT_APP_API_BASE || "/api");
-  const r = await fetch(`${BASE}/fetch-transacted-items.php`, {
-    method: 'POST',
+  const BASE = process.env.REACT_APP_API_BASE || "/api";
+  const r = await fetch(`${BASE}/fetch-transacted-items?year=${year}`, {
+    method: 'GET',                     
     headers: {
-      'Content-Type': 'application/json',                                  
-      'Accept': 'application/json'    
+      'Accept': 'application/json'     
     },
-    body: JSON.stringify({ year })
-    }, { signal });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
+    signal                           
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);  
+  return await r.json();                          
 }
 
 function PurchaseHistoryPage() {
@@ -71,7 +70,9 @@ function PurchaseHistoryPage() {
           <select
             id="yearSelect"                                   // unique identifier for the control
             value={year}                                      // controlled value from component state (see snippet below)
-            onChange={(event) => setYear(Number(event.target.value))} // update state when user picks a year
+            onChange={(event) => {
+              setYear(Number(event.target.value));
+            }} // update state when user picks a year
             className="w-full rounded-lg px-4 py-3 text-base bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-700"
           >
             {years.map((y) => (                              // render a list of year options

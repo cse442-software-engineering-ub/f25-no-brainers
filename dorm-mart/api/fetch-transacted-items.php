@@ -8,8 +8,11 @@ require __DIR__ . '/db_connect.php';
 
 $conn = db();
 
-$input = json_decode(file_get_contents('php://input'), true); // read raw request body and decode JSON
-$year  = isset($input['year']) ? intval($input['year']) : null; // coerce to integer if provided
+$year = null;
+if (isset($_GET['year']) && $_GET['year'] !== '') {
+    // Coerce to int safely (rejects non-numeric)
+    $year = (int)$_GET['year'];
+}
 
 if ($year === null || $year < 2016 || $year > 2025) { // adjust bounds as needed
     http_response_code(400);                          // bad request
