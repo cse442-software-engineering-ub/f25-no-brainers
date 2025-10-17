@@ -14,3 +14,34 @@ echo json_encode([
     'csrf_token' => $token
 ]);
 ?>
+
+/** 
+EXAMPLE OF CSRF TOKEN GENERATION AND VALIDATION
+*This pretty much prevents another website from making requests to our backend
+
+ 
+// In auth_handle.php
+function generate_csrf_token(): string {
+    auth_boot_session();
+    
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+// In auth_handle.php
+function validate_csrf_token(string $token): bool {
+    auth_boot_session();
+    
+    if (!isset($_SESSION['csrf_token'])) {
+        return false;
+    }
+    
+    return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+// In login.php, create_account.php, etc.
+require_csrf_token(); // Validates token before processing request
+
+*/
