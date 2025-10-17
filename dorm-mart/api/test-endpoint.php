@@ -3,10 +3,9 @@
 // Set JSON response header
 header('Content-Type: application/json');
 
-// Enable CORS for frontend testing
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Accept');
+// SECURE CORS Configuration
+require_once __DIR__ . '/auth/utility/security.php';
+setSecureCORS();
 
 // Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

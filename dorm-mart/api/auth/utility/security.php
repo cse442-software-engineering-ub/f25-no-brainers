@@ -27,4 +27,28 @@ function setSecurityHeaders() {
     header("Referrer-Policy: strict-origin-when-cross-origin");
 }
 
+function setSecureCORS() {
+    // SECURE CORS Configuration - Only allow specific trusted origins
+    $allowedOrigins = [
+        'http://localhost:3000',      // React dev server
+        'http://localhost:8080',      // PHP dev server
+        'https://aptitude.cse.buffalo.edu',  // Test server
+        'https://cattle.cse.buffalo.edu'    // Production server
+    ];
+    
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    
+    if (in_array($origin, $allowedOrigins)) {
+        header("Access-Control-Allow-Origin: $origin");
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+    } else {
+        // Reject requests from untrusted origins
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Origin not allowed']);
+        exit;
+    }
+}
+
 ?>
