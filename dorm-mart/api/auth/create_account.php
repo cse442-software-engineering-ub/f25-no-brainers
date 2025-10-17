@@ -186,6 +186,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// CSRF Protection
+require_csrf_token();
+
 // Read the JSON body from React's fetch()
 $rawInput = file_get_contents('php://input');
 $data = json_decode($rawInput, true);

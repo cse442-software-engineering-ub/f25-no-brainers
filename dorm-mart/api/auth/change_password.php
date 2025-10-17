@@ -17,7 +17,9 @@ header('Access-Control-Allow-Credentials: true');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 
+// CSRF Protection
 require __DIR__ . '/auth_handle.php';
+require_csrf_token();
 require __DIR__ . '/../db_connect.php';
 
 auth_boot_session();

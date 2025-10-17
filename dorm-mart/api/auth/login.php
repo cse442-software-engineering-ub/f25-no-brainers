@@ -28,6 +28,9 @@ require __DIR__ . '/../db_connect.php';
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(['ok'=>false,'error'=>'Method Not Allowed']); exit; }
 
+// CSRF Protection
+require_csrf_token();
+
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
   $raw  = file_get_contents('php://input');

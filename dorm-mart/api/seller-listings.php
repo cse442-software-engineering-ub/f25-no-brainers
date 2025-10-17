@@ -25,6 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
+// CSRF Protection
+require_csrf_token();
+
 try {
     // Require authentication - this will redirect to login if not authenticated
     $userId = require_login();

@@ -156,3 +156,34 @@ function logout_destroy_session(): void {
 
   clear_remember_cookie($uid);
 }
+
+/* ---------- CSRF Protection ---------- */
+
+function generate_csrf_token(): string {
+  auth_boot_session();
+  
+  if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+  }
+  return $_SESSION['csrf_token'];
+}
+
+function validate_csrf_token(string $token): bool {
+  auth_boot_session();
+  
+  if (!isset($_SESSION['csrf_token'])) {
+    return false;
+  }
+  
+  return hash_equals($_SESSION['csrf_token'], $token);
+}
+
+function require_csrf_token(): void {
+  $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? null;
+  
+  if (!$token || !validate_csrf_token($token)) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+    exit;
+  }
+}

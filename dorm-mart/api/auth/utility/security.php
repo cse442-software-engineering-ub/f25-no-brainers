@@ -26,4 +26,5 @@ function setSecurityHeaders() {
     header("X-Frame-Options: DENY");
     header("Referrer-Policy: strict-origin-when-cross-origin");
 }
+
 ?>
