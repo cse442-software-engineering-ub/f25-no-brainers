@@ -51,4 +51,13 @@ function setSecureCORS() {
     }
 }
 
+function validateUserAccess($requestedUserId, $loggedInUserId) {
+    // IDOR Protection - Ensure user can only access their own data
+    if ($requestedUserId != $loggedInUserId) {
+        http_response_code(403);
+        echo json_encode(['ok' => false, 'error' => 'Permission denied - cannot access other user data']);
+        exit;
+    }
+}
+
 ?>
