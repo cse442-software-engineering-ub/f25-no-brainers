@@ -86,43 +86,90 @@ try {
   }
 
   // --- Save images (no finfo) ---
-  // Configurable via env so deployments under subpaths (e.g., Aptitude) work
+  // Filesystem directory: where images are stored on disk
   $envDir  = getenv('DATA_IMAGES_DIR');
-  $envBase = getenv('DATA_IMAGES_URL_BASE');
-  $imageDirFs   = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname($API_ROOT) . '/images'), '/') . '/';
-  $imageBaseUrl = rtrim($envBase !== false && $envBase !== '' ? $envBase : '/images', '/');
+  $imageDirFs = rtrim($envDir !== false && $envDir !== '' ? $envDir : (dirname(dirname(__DIR__)) . '/images'), '/') . '/';
+  
   if (!is_dir($imageDirFs)) { @mkdir($imageDirFs, 0775, true); }
 
   $imageUrls = [];
-  if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
+  // Handle file uploads - support both images[] array and single image
+  if (!empty($_FILES['images'])) {
     $maxFiles   = 6;
     $maxSizeB   = 5 * 1024 * 1024; // 5MB
     $allowedExt = ['jpg','jpeg','png','webp','gif'];
     $cnt = 0;
 
-    foreach ($_FILES['images']['tmp_name'] as $i => $tmpPath) {
-      if ($cnt >= $maxFiles) break;
-      if (($_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
-      if (!is_uploaded_file($tmpPath)) continue;
+    // Check if images is structured as array (multiple files) or single file
+    $isArray = isset($_FILES['images']['tmp_name']) && is_array($_FILES['images']['tmp_name']);
+    
+    if ($isArray) {
+      // Multiple files uploaded as images[]
+      foreach ($_FILES['images']['tmp_name'] as $i => $tmpPath) {
+        if ($cnt >= $maxFiles) break;
+        if (!isset($tmpPath) || ($_FILES['images']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+        if (!is_uploaded_file($tmpPath)) continue;
 
-      $sz = @filesize($tmpPath);
-      if ($sz !== false && $sz > $maxSizeB) continue;
+        $sz = @filesize($tmpPath);
+        if ($sz === false || $sz > $maxSizeB) continue;
 
-      $origName = (string)($_FILES['images']['name'][$i] ?? '');
-      $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-      if (!in_array($ext, $allowedExt, true)) { $ext = 'jpg'; }
+        $origName = (string)($_FILES['images']['name'][$i] ?? '');
+        $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExt, true)) { $ext = 'jpg'; }
 
-      $fname = uniqid('img_', true) . '.' . $ext;
-      if (move_uploaded_file($tmpPath, $imageDirFs . $fname)) {
-        $imageUrls[] = $imageBaseUrl . '/' . $fname;
-        $cnt++;
+        $fname = uniqid('img_', true) . '.' . $ext;
+        $destPath = $imageDirFs . $fname;
+        if (move_uploaded_file($tmpPath, $destPath)) {
+          // Force /images path - never use /data/images
+          $imageUrls[] = '/images/' . $fname;
+          $cnt++;
+        }
+      }
+    } else if (isset($_FILES['images']['tmp_name']) && $_FILES['images']['error'] === UPLOAD_ERR_OK) {
+      // Single file (fallback for non-array structure)
+      $tmpPath = $_FILES['images']['tmp_name'];
+      if (is_uploaded_file($tmpPath)) {
+        $sz = @filesize($tmpPath);
+        if ($sz !== false && $sz <= $maxSizeB) {
+          $origName = (string)($_FILES['images']['name'] ?? '');
+          $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+          if (!in_array($ext, $allowedExt, true)) { $ext = 'jpg'; }
+
+          $fname = uniqid('img_', true) . '.' . $ext;
+          $destPath = $imageDirFs . $fname;
+          if (move_uploaded_file($tmpPath, $destPath)) {
+            // Force /images path - never use /data/images
+            $imageUrls[] = '/images/' . $fname;
+          }
+        }
       }
     }
   }
 
   // --- JSON columns ---
+  // CRITICAL: Force all image URLs to be exactly /images/filename.jpg
+  // Remove any path prefixes, any /data/ references, everything - just /images/ + filename
+  $imageUrls = array_map(function($url) {
+    // Extract just the filename from any path format
+    $filename = basename($url);
+    // Always return /images/filename - never anything else
+    return '/images/' . $filename;
+  }, $imageUrls);
+  
   $categoriesJson = !empty($catsArr)   ? json_encode($catsArr, JSON_UNESCAPED_SLASHES)   : null;
-  $photosJson     = !empty($imageUrls) ? json_encode($imageUrls, JSON_UNESCAPED_SLASHES) : null;
+  
+  // FINAL SAFETY CHECK: Rebuild imageUrls from scratch to ensure /images/ only
+  // This happens RIGHT BEFORE saving to database
+  $finalImageUrls = [];
+  foreach ($imageUrls as $url) {
+    // Extract filename, ignore ANY path structure (handles /data/images/, /images/, full paths, etc.)
+    $filename = basename(trim((string)$url));
+    if ($filename === '' || $filename === '.') continue;
+    // Always use /images/ prefix - nothing else, no env vars, no base paths
+    $finalImageUrls[] = '/images/' . $filename;
+  }
+  // This is what gets saved to database - should ONLY be /images/filename.jpg format
+  $photosJson = !empty($finalImageUrls) ? json_encode($finalImageUrls, JSON_UNESCAPED_SLASHES) : null;
 
   // --- Create / Update ---
   if ($mode === 'update' && $itemId > 0) {

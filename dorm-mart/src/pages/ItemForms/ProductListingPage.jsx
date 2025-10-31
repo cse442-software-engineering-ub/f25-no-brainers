@@ -268,9 +268,28 @@ function ProductListingPage() {
     if (!files.length) return;
 
     const file = files[0];
+    if (!file || !file.type.startsWith('image/')) {
+      setServerMsg('Please select a valid image file.');
+      e.target.value = null;
+      return;
+    }
+
     const reader = new FileReader();
+    reader.onerror = function() {
+      setServerMsg('Failed to read image file.');
+      e.target.value = null;
+    };
     reader.onload = function (ev) {
+      if (!ev.target || !ev.target.result) {
+        setServerMsg('Failed to load image.');
+        e.target.value = null;
+        return;
+      }
       const img = new Image();
+      img.onerror = function() {
+        setServerMsg('Invalid image file.');
+        e.target.value = null;
+      };
       img.onload = function () {
         const w = img.width;
         const h = img.height;
@@ -290,12 +309,11 @@ function ProductListingPage() {
           setPendingFileName(file.name || "image.png");
           setShowCropper(true);
         }
+        e.target.value = null;
       };
       img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
-
-    e.target.value = null;
   }
 
   function removeImage(idx) {
@@ -468,11 +486,8 @@ function ProductListingPage() {
 
     images.forEach((img, i) => {
       if (img?.file) {
-        fd.append(
-          "images[]",
-          img.file,
-          img.file.name || `image_${i}.png` || `image_${i}.jpg`
-        );
+        const fileName = img.file.name || `image_${i}.png`;
+        fd.append("images[]", img.file, fileName);
       }
     });
 
@@ -863,14 +878,24 @@ function ProductListingPage() {
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                {images.length ? (
+                {images.length > 0 ? (
                   images.map((img, i) => (
                     <div key={i} className="relative group">
-                      <img
-                        src={img.url}
-                        alt={`preview-${i}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
+                      {img.url ? (
+                        <img
+                          src={img.url}
+                          alt={`preview-${i}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                          onError={(e) => {
+                            console.error('Preview image failed to load:', img.url);
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-500 text-xs">
+                          Loading...
+                        </div>
+                      )}
                       <button
                         onClick={() => removeImage(i)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"

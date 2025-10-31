@@ -2,10 +2,10 @@
 declare(strict_types=1);
 
 // dorm-mart/api/image.php
-// Serves images that are stored under /data/images/ on disk
-// Accepts either ?file=filename.png OR ?url=/data/images/filename.png
+// Serves images that are stored under /images/ on disk
+// Accepts either ?file=filename.png OR ?url=/images/filename.png
 
-$IMAGE_DIR = realpath(__DIR__ . '/../data/images');
+$IMAGE_DIR = realpath(__DIR__ . '/../images');
 if ($IMAGE_DIR === false) {
     http_response_code(500);
     exit('Image directory not found');
@@ -33,7 +33,7 @@ if (isset($_GET['file']) && $_GET['file'] !== '') {
     stream_image($path);
 }
 
-// 2) ?url=/data/images/filename.png
+// 2) ?url=/images/filename.png OR ?url=/data/images/filename.png
 if (isset($_GET['url']) && $_GET['url'] !== '') {
     $url = $_GET['url'];
 
@@ -43,16 +43,14 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
         $url = substr($url, 0, $qpos);
     }
 
-    // url should start with /data/images/
-    $prefix = '/data/images/';
-    if (strpos($url, $prefix) === 0) {
-        $file = substr($url, strlen($prefix));
-    } else {
-        // maybe someone passed just filename, handle that too
-        $file = basename($url);
-    }
-
-    $file = basename($file);
+    // Extract filename from any path format:
+    // - /images/filename.jpg
+    // - /data/images/filename.jpg  
+    // - /CSE442/2025-Fall/cse-442j/images/filename.jpg
+    // - /CSE442/2025-Fall/cse-442j/data/images/filename.jpg
+    // All images are stored in /images/ directory on disk, regardless of URL path
+    $file = basename($url);
+    
     $path = $IMAGE_DIR . DIRECTORY_SEPARATOR . $file;
     if (!file_exists($path)) {
         http_response_code(404);

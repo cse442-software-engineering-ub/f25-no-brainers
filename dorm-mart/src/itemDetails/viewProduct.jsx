@@ -76,18 +76,10 @@ export default function ViewProduct() {
     }
     photos = (photos || []).filter(Boolean);
 
-    // proxy remote images through image.php if present
+    // proxy all images through image.php (matches LandingPage behavior)
     const photoUrls = photos.map((p) => {
       const raw = String(p);
-      if (/^https?:\/\//i.test(raw)) {
-        return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
-      }
-      // Paths starting with "/" are already absolute from web root, use as-is
-      // Relative paths (no leading "/") are relative to PUBLIC_BASE
-      if (raw.startsWith("/")) {
-        return raw;
-      }
-      return PUBLIC_BASE ? `${PUBLIC_BASE}/${raw.replace(/^\//, '')}` : raw;
+      return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
     });
 
     // tags can be JSON array or comma-separated string
