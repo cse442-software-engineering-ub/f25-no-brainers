@@ -82,7 +82,12 @@ export default function ViewProduct() {
       if (/^https?:\/\//i.test(raw)) {
         return `${API_BASE}/image.php?url=${encodeURIComponent(raw)}`;
       }
-      return raw.startsWith("/") ? `${PUBLIC_BASE}${raw}` : raw;
+      // Paths starting with "/" are already absolute from web root, use as-is
+      // Relative paths (no leading "/") are relative to PUBLIC_BASE
+      if (raw.startsWith("/")) {
+        return raw;
+      }
+      return PUBLIC_BASE ? `${PUBLIC_BASE}/${raw.replace(/^\//, '')}` : raw;
     });
 
     // tags can be JSON array or comma-separated string
