@@ -91,7 +91,20 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
 }
 
 try {
-    // CRITICAL: Check rate limiting FIRST, before any password verification
+    // Get client IP address for IP-based rate limiting
+    $clientIp = get_client_ip();
+    
+    // CRITICAL: Check IP rate limiting FIRST, before email check
+    // This blocks all attempts from a locked IP regardless of email
+    $ipRateLimitCheck = check_ip_rate_limit($clientIp);
+    if ($ipRateLimitCheck['blocked']) {
+        $remainingMinutes = get_remaining_lockout_minutes($ipRateLimitCheck['lockout_until']);
+        http_response_code(429);
+        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+        exit;
+    }
+    
+    // CRITICAL: Check email rate limiting SECOND, before any password verification
     $rateLimitCheck = check_rate_limit($email);
     if ($rateLimitCheck['blocked']) {
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
@@ -120,6 +133,8 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
+        // Record both IP and email attempts
+        record_ip_failed_attempt($clientIp);
         record_failed_attempt($email);
         
         http_response_code(401);
@@ -135,7 +150,8 @@ try {
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         
-        // Record failed attempt
+        // Record failed attempt for both IP and email
+        record_ip_failed_attempt($clientIp);
         record_failed_attempt($email);
         
         http_response_code(401);
