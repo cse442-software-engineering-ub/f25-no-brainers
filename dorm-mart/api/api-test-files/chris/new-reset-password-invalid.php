@@ -1,4 +1,14 @@
 <?php
+/*
+ * Test: Reset Password - password fails policy (too short / missing classes)
+ * Runtime behavior:
+ *  - Locally: Calls your local /api/auth/reset-password.php on the same host (npm/Apache).
+ *  - Aptitude/Cattle: Calls the same path on that server; no CORS issues (server-side request).
+ * Expected HTTP status codes from THIS test file:
+ *  - 200: Test executed and returned a PASS/FAIL payload (expect policy error upstream).
+ *  - 400: The test input to THIS file was invalid (e.g., missing token/newPassword).
+ *  - 500: Network failure when calling the upstream API.
+ */
 header('Content-Type: application/json; charset=utf-8');
 
 // Test: Invalid password should be rejected by reset-password API

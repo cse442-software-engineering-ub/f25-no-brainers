@@ -1,4 +1,14 @@
 <?php
+/*
+ * Test: Forgot Password - valid UB email
+ * Runtime behavior:
+ *  - Locally: Calls your local /api/auth/forgot-password.php on the same host (npm/Apache).
+ *  - Aptitude/Cattle: Calls the same path on that server; no CORS issues (server-side request).
+ * Expected HTTP status codes from THIS test file:
+ *  - 200: Test executed and returned a PASS/FAIL payload (expect success=true upstream).
+ *  - 400: The test input to THIS file was invalid (e.g., missing/invalid email format).
+ *  - 500: Network failure when calling the upstream API.
+ */
 header('Content-Type: application/json; charset=utf-8');
 
 // Test: Verify forgot-password returns success for a valid UB email
