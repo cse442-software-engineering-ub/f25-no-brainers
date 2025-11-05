@@ -1,49 +1,53 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-// Test 4 - Password Mismatch Test
-// This test calls the REAL reset-password API and checks if it validates password matching
+// Test: Invalid token (or mismatch scenario) should be rejected by reset-password API
+// Note: Backend API does not accept a confirmation field; this test focuses on token validity
 
-// Get JSON input
-$input = json_decode(file_get_contents('php://input'), true);
+function build_api_url(string $path): string {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $req  = $_SERVER['REQUEST_URI'] ?? '/';
+    $base = preg_replace('#/api/api-test-files/.*$#', '/api', $req);
+    return $scheme . '://' . $host . $base . $path;
+}
 
-// Validate required fields
-if (!isset($input['token']) || !isset($input['new_password']) || !isset($input['re_new_password'])) {
+$input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+if (!isset($input['token']) || !isset($input['newPassword'])) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error' => 'Missing required fields: token, new_password, re_new_password'
+        'error' => 'Missing required fields: token, newPassword'
     ]);
     exit;
 }
 
-$token = $input['token'];
-$newPassword = $input['new_password'];
-$reNewPassword = $input['re_new_password'];
+$token = (string)$input['token'];
+$newPassword = (string)$input['newPassword'];
 
-// Call the REAL reset-password API to test actual functionality
-$resetPasswordUrl = 'https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/api/auth/reset-password.php';
+$resetPasswordUrl = build_api_url('/auth/reset-password.php');
 
 $postData = json_encode([
     'token' => $token,
-    'new_password' => $newPassword,
-    're_new_password' => $reNewPassword
+    'newPassword' => $newPassword,
 ]);
 
 $context = stream_context_create([
     'http' => [
-        'method' => 'POST',
-        'header' => 'Content-Type: application/json',
-        'content' => $postData
+        'method'  => 'POST',
+        'header'  => "Content-Type: application/json\r\nAccept: application/json",
+        'content' => $postData,
+        'ignore_errors' => true,
     ]
 ]);
 
-$result = file_get_contents($resetPasswordUrl, false, $context);
+$result = @file_get_contents($resetPasswordUrl, false, $context);
 
 if ($result === false) {
     http_response_code(500);
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'error' => 'Failed to call reset-password API',
         'test_result' => 'ERROR - API call failed'
     ]);
@@ -52,21 +56,22 @@ if ($result === false) {
 
 $response = json_decode($result, true);
 
-// Check if the API returned the expected error for password mismatch
-if (isset($response['error']) && (strpos($response['error'], 'match') !== false || strpos($response['error'], 'identical') !== false)) {
-    http_response_code(400);
+$errorText = (string)($response['error'] ?? '');
+if ($errorText !== '' && (stripos($errorText, 'invalid') !== false || stripos($errorText, 'expired') !== false)) {
+    http_response_code(200);
     echo json_encode([
         'success' => false,
-        'error' => 'Passwords do not match. Please ensure both password fields are identical.',
-        'test_result' => 'PASS - API correctly identified password mismatch'
+        'error' => $errorText,
+        'test_result' => 'PASS - API rejected invalid token',
+        'api_response' => $response,
     ]);
 } else {
     http_response_code(200);
     echo json_encode([
         'success' => false,
-        'error' => 'API did not return expected response for password mismatch',
+        'error' => 'API did not return expected error for invalid token',
         'api_response' => $response,
-        'test_result' => 'FAIL - API should have returned password mismatch error'
+        'test_result' => 'FAIL - Expected invalid/expired token error'
     ]);
 }
 ?>
