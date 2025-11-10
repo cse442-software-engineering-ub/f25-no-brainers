@@ -31,6 +31,69 @@ export function ChatProvider({ children }) {
     const myIdRef = useRef(null);
     useEffect(() => { myIdRef.current = myId; }, [myId]);
 
+    function projectConversationRow(row, currentUserId) {
+        if (!row || !currentUserId) return null;
+        const convId = Number(row.conv_id);
+        const user1Id = Number(row.user1_id);
+        const user2Id = Number(row.user2_id);
+        if (!Number.isInteger(convId) || !Number.isInteger(user1Id) || !Number.isInteger(user2Id)) {
+            return null;
+        }
+        const iAmUser1 = user1Id === currentUserId;
+        const iAmUser2 = user2Id === currentUserId;
+        if (!iAmUser1 && !iAmUser2) {
+            return null;
+        }
+        const receiverId = iAmUser1 ? user2Id : user1Id;
+        const rawName = iAmUser1 ? (row.user2_fname ?? '') : (row.user1_fname ?? '');
+        const receiverName = rawName && rawName.trim() !== '' ? rawName : `User ${receiverId}`;
+        const productTitle = row.product_title || null;
+        const productId = row.product_id ? Number(row.product_id) : null;
+        const productSellerId = row.product_seller_id ? Number(row.product_seller_id) : null;
+        const productImageUrl = row.product_image_url || null;
+        return {
+            conv_id: convId,
+            receiverId,
+            receiverName,
+            productTitle,
+            productId,
+            productSellerId,
+            productImageUrl,
+        };
+    }
+
+    const pendingConversationsRef = useRef([]);
+    const conversationsRef = useRef([]);
+
+    function upsertConversationRow(row) {
+        const currentId = myIdRef.current;
+        const entry = projectConversationRow(row, currentId);
+        if (!entry) {
+            if (!currentId) {
+                const pending = pendingConversationsRef.current;
+                const existing = pending.find((c) => Number(c?.conv_id) === Number(row?.conv_id));
+                if (!existing) {
+                    pending.push(row);
+                }
+            }
+            return null;
+        }
+        setConversations((prev) => {
+            const idx = prev.findIndex((c) => c.conv_id === entry.conv_id);
+            if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = entry;
+                return next;
+            }
+            return [...prev, entry];
+        });
+        return entry;
+    }
+
+    const lastNavConvRef = useRef(null);
+    const refreshInFlightRef = useRef(false);
+    const pendingConvFetchesRef = useRef(new Set()); // Track conversations waiting for myId
+
     // chat
     const [conversations, setConversations] = useState([]);
     const [activeConvId, setActiveConvId] = useState(null);
@@ -52,6 +115,24 @@ export function ChatProvider({ children }) {
     const [unreadByConv, setUnreadByConv] = useState({});  // { [conv_id]: count }
     const [unreadTotal, setUnreadTotal] = useState(0);     // sum of counts
 
+    const loadConversations = async (signal, userIdOverride) => {
+        try {
+            const res = await fetch_conversations(signal);
+            if (!res.success) {
+                throw new Error("Failed to load conversations");
+            }
+            const currentUserId = userIdOverride ?? myIdRef.current;
+            if (!currentUserId) return;
+            const view = (res.conversations || [])
+                .map((c) => projectConversationRow(c, currentUserId))
+                .filter(Boolean);
+
+            setConversations(view);
+        } catch (err) {
+            setConvError(true);
+        }
+    };
+
     // on context load, fetch all conversations
     useEffect(() => {
         const controller = new AbortController();
@@ -61,20 +142,7 @@ export function ChatProvider({ children }) {
                 setConvError(false);
                 const me = await fetch_me(controller.signal);
                 setMyId(me.user_id);
-                const res = await fetch_conversations(controller.signal);
-                if (!res.success) {
-                    throw new Error("Failed to load conversations");
-                }
-                const view = (res.conversations || []).map((c) => {
-                    const iAmUser1 = c.user1_id === me.user_id;
-                    return {
-                        conv_id: c.conv_id,
-                        receiverId: iAmUser1 ? c.user2_id : c.user1_id,
-                        receiverName: iAmUser1 ? c.user2_fname : c.user1_fname,
-                    };
-                });
-
-                setConversations(view);
+                await loadConversations(controller.signal, me.user_id);
             } catch (err) {
                 setConvError(true);
             }
@@ -83,10 +151,88 @@ export function ChatProvider({ children }) {
         return () => controller.abort();
     }, []);
 
+    useEffect(() => {
+        conversationsRef.current = conversations;
+    }, [conversations]);
+
+    useEffect(() => {
+        if (!myId) return;
+        if (!pendingConversationsRef.current.length) return;
+        const queued = pendingConversationsRef.current.splice(0, pendingConversationsRef.current.length);
+        queued.forEach((row) => {
+            upsertConversationRow(row);
+        });
+    }, [myId]);
+
+    // Retry pending conversation fetches when myId becomes available
+    useEffect(() => {
+        if (!myId) return;
+        const pending = Array.from(pendingConvFetchesRef.current);
+        if (pending.length === 0) return;
+        
+        // Clear the pending set and retry each conversation
+        pendingConvFetchesRef.current.clear();
+        pending.forEach((convId) => {
+            fetchConversation(convId);
+        });
+    }, [myId]);
+
+    useEffect(() => {
+        if (!location.pathname.startsWith("/app/chat")) {
+            lastNavConvRef.current = null;
+            return;
+        }
+
+        // Guard: Only auto-load conversations when myId is available
+        if (!myId) {
+            return;
+        }
+
+        let convId = null;
+        const navState = location.state && typeof location.state === 'object' ? location.state : null;
+
+        if (navState && navState.convId != null) {
+            convId = Number(navState.convId);
+        }
+
+        if (convId == null && location.search) {
+            try {
+                const params = new URLSearchParams(location.search);
+                const queryConv = params.get('conv');
+                if (queryConv) convId = Number(queryConv);
+            } catch (_) {
+                // ignore malformed query string
+            }
+        }
+
+        if (convId == null && navState && navState.receiverId != null) {
+            const receiverId = Number(navState.receiverId);
+            if (!Number.isNaN(receiverId)) {
+                const match = conversations.find((c) => c.receiverId === receiverId);
+                if (match) convId = match.conv_id;
+            }
+        }
+
+        if (convId && !Number.isNaN(convId) && convId > 0) {
+            if (lastNavConvRef.current !== convId) {
+                lastNavConvRef.current = convId;
+                fetchConversation(convId);
+            }
+        }
+    }, [location, conversations, myId]);
+
     // when a chat is selected
     async function fetchConversation(convId) {
         setActiveConvId(convId);
         setChatByConvError((m) => ({...m, [convId]: false}));
+
+        // Check if myId is available before proceeding
+        const currentMyId = myIdRef.current;
+        if (!currentMyId) {
+            // Queue this conversation for retry once myId is loaded
+            pendingConvFetchesRef.current.add(convId);
+            return;
+        }
 
         const controller = new AbortController();
         try {
@@ -96,12 +242,38 @@ export function ChatProvider({ children }) {
             }
 
             const raw = res.messages || [];
+            const myIdNum = Number(currentMyId);
+            if (!Number.isInteger(myIdNum) || myIdNum <= 0) {
+                throw new Error("Invalid user ID");
+            }
+            
             const normalized = raw.map((m) => {
+                const metadata = (() => {
+                    if (!m.metadata) return null;
+                    if (typeof m.metadata === "object") return m.metadata;
+                    try {
+                        return JSON.parse(m.metadata);
+                    } catch {
+                        return null;
+                    }
+                })();
+                const senderIdNum = Number(m.sender_id);
+                if (!Number.isInteger(senderIdNum) || senderIdNum <= 0) {
+                    // Invalid sender_id, default to "them" for safety
+                    return {
+                        message_id: m.message_id,
+                        sender: "them",
+                        content: m.content,
+                        ts: Date.parse(m.created_at),
+                        metadata,
+                    };
+                }
                 return {
                     message_id: m.message_id,
-                    sender: m.sender_id === myIdRef.current ? "me" : "them",
+                    sender: senderIdNum === myIdNum ? "me" : "them",
                     content: m.content,
                     ts: Date.parse(m.created_at),
+                    metadata,
                 }
             });
 
@@ -111,10 +283,15 @@ export function ChatProvider({ children }) {
             : 0;
 
             clearUnreadMsgFor(convId);
+            
+            // Remove from pending set on success
+            pendingConvFetchesRef.current.delete(convId);
 
         } catch(err) {
             if (err.name !== "AbortError") {
                 setChatByConvError((m) => ({...m, [convId]: true}));
+                // Remove from pending set on error (will be retried if myId becomes available)
+                pendingConvFetchesRef.current.delete(convId);
             }
         }
     }
@@ -132,6 +309,7 @@ export function ChatProvider({ children }) {
             const res = await create_message({
                 senderId: myIdRef.current,
                 receiverId: convo.receiverId,
+                convId: activeConvId,
                 content: trimmed,
                 signal: undefined,
             });
@@ -166,8 +344,8 @@ export function ChatProvider({ children }) {
 
         stopPolling();
 
-        // if not in chat, or no active conversation, do nothing
-        if (!isOnChatRoute || !activeConvId) return;
+        // if not in chat, or no active conversation, or no user ID, do nothing
+        if (!isOnChatRoute || !activeConvId || !myIdRef.current) return;
 
         const shouldPollNow = () => document.visibilityState === "visible";
 
@@ -176,6 +354,10 @@ export function ChatProvider({ children }) {
 
         const tick = async() => {
             if (!shouldPollNow()) return;
+            
+            // Ensure myId is still available
+            const currentMyId = myIdRef.current;
+            if (!currentMyId) return;
 
             // cancel any previous unfinished request before starting a new one
             if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
@@ -187,7 +369,7 @@ export function ChatProvider({ children }) {
 
             try {
                 const sinceSec = Math.floor((lastTsRefByConv.current[activeConvId] || 0) / 1000);
-                const incoming = await tick_fetch_new_messages(activeConvId, myIdRef.current, sinceSec, controller.signal);
+                const incoming = await tick_fetch_new_messages(activeConvId, currentMyId, sinceSec, controller.signal);
                 if (!incoming.length) return;
     
                 setMessagesByConv((prev) => {
@@ -222,7 +404,7 @@ export function ChatProvider({ children }) {
             // abort any in-flight request on unmount/dep-change
             if (inFlightRef.ctrl) inFlightRef.ctrl.abort();
         };
-    }, [activeConvId, isOnChatRoute]);
+    }, [activeConvId, isOnChatRoute, myId]);
 
     function clearUnreadMsgFor(convId) {
     setUnreadByConv((prev) => {
@@ -261,6 +443,21 @@ export function ChatProvider({ children }) {
                 const { unreads, total } = await tick_fetch_unread_messages(controller.signal);
                 setUnreadByConv(unreads);
                 setUnreadTotal(total);
+
+                const currentConvs = conversationsRef.current;
+                const convIds = new Set(currentConvs.map((c) => c.conv_id));
+                const missing = Object.keys(unreads || {})
+                    .map((id) => Number(id))
+                    .filter((id) => id && !convIds.has(id));
+
+                if (missing.length && !refreshInFlightRef.current) {
+                    refreshInFlightRef.current = true;
+                    try {
+                        await loadConversations();
+                    } finally {
+                        refreshInFlightRef.current = false;
+                    }
+                }
             } catch (e) {
                stopPolling();
             } finally {
@@ -280,16 +477,20 @@ export function ChatProvider({ children }) {
         conversations,
         activeConvId,
         messages,
+        messagesByConv, // Expose to check loading state
         convError,
         chatByConvError,
         sendMsgError,
         // unread state
         unreadByConv,
         unreadTotal,
+        // user info
+        myId,
         // actions
         fetchConversation,
         createMessage,
         clearActiveConversation,
+        registerConversation: upsertConversationRow,
         // config (optional: useful for tests or dynamic tuning)
         _config: { POLL_MS: NEW_MSG_POLL_MS, UNREAD_MSG_POLL_MS },
   };
