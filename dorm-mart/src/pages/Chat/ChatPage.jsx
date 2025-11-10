@@ -43,6 +43,8 @@ export default function ChatPage() {
   
   // Track if there's an active scheduled purchase for the current product
   const [hasActiveScheduledPurchase, setHasActiveScheduledPurchase] = useState(false);
+  // Track if there is an ACCEPTED scheduled purchase (used to enable Confirm Purchase)
+  const [hasAcceptedScheduledPurchase, setHasAcceptedScheduledPurchase] = useState(false);
 
   // Handle conv query parameter to auto-open conversation
   useEffect(() => {
@@ -159,15 +161,64 @@ export default function ChatPage() {
     }
   }, [activeConversation?.productId, activeConversation?.productSellerId, myId]);
 
+  // Check for ACCEPTED scheduled purchase for this product (perspective aware)
+  const checkAcceptedScheduledPurchase = useCallback(async (signal) => {
+    const productId = activeConversation?.productId;
+    const isSellerPerspective = activeConversation?.productId && activeConversation?.productSellerId && myId &&
+      Number(activeConversation.productSellerId) === Number(myId);
+
+    try {
+      // Choose list endpoint based on perspective
+      const endpoint = isSellerPerspective
+        ? `${API_BASE}/scheduled-purchases/list_seller.php`
+        : `${API_BASE}/scheduled-purchases/list_buyer.php`;
+      // Find accepted requests for this product (and conversation, if present)
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        credentials: 'include',
+        signal: signal,
+      });
+      if (!res.ok) {
+        setHasAcceptedScheduledPurchase(false);
+        return;
+      }
+      const result = await res.json();
+      if (!result?.success || !Array.isArray(result?.data)) {
+        setHasAcceptedScheduledPurchase(false);
+        return;
+      }
+
+      const convId = activeConvId;
+      const matches = result.data.filter((req) => {
+        const status = String(req.status || '').toLowerCase();
+        if (status !== 'accepted') return false;
+        // Try common keys for product and conversation
+        const reqProductId = req.product_id ?? req.inventory_product_id ?? req.listing_id ?? null;
+        const reqConvId = req.conversation_id ?? req.conv_id ?? null;
+        const productMatches = reqProductId != null && Number(reqProductId) === Number(productId);
+        const convMatches = reqConvId == null || (convId != null && Number(reqConvId) === Number(convId));
+        return productMatches && convMatches;
+      });
+
+      setHasAcceptedScheduledPurchase(matches.length > 0);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        setHasAcceptedScheduledPurchase(false);
+      }
+    }
+  }, [activeConversation?.productId, activeConversation?.productSellerId, activeConvId, myId]);
+
   // Check for active scheduled purchase when product changes
   useEffect(() => {
     const controller = new AbortController();
     checkActiveScheduledPurchase(controller.signal);
+    checkAcceptedScheduledPurchase(controller.signal);
     
     return () => {
       controller.abort();
     };
-  }, [checkActiveScheduledPurchase]);
+  }, [checkActiveScheduledPurchase, checkAcceptedScheduledPurchase]);
 
   // Re-check for active scheduled purchases when messages change (e.g., after denial/acceptance)
   useEffect(() => {
@@ -180,17 +231,29 @@ export default function ChatPage() {
     // Small delay to ensure backend has processed the status change
     const timeoutId = setTimeout(() => {
       checkActiveScheduledPurchase(controller.signal);
+      checkAcceptedScheduledPurchase(controller.signal);
     }, 500);
     
     return () => {
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase]);
+  }, [messages.length, activeConversation?.productId, isSellerPerspective, checkActiveScheduledPurchase, checkAcceptedScheduledPurchase]);
 
   function handleSchedulePurchase() {
     if (!activeConvId || !activeConversation?.productId || hasActiveScheduledPurchase) return;
     navigate("/app/seller-dashboard/schedule-purchase", {
+      state: {
+        convId: activeConvId,
+        productId: activeConversation.productId,
+      }
+    });
+  }
+
+  function handleConfirmPurchase() {
+    if (!activeConvId || !activeConversation?.productId) return;
+    // This action is meant to be used after a Scheduled Purchase is in place
+    navigate("/app/seller-dashboard/confirm-purchase", {
       state: {
         convId: activeConvId,
         productId: activeConversation.productId,
@@ -604,21 +667,40 @@ export default function ChatPage() {
             </div>
             {/* Composer */}
             <div className="sticky bottom-0 z-10 border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
-              {/* Schedule Purchase button (only for sellers in item-specific conversations) - above send button */}
-              {isSeller && activeConversation?.productId && (
-                <div className="mb-2">
-                  <button
-                    onClick={handleSchedulePurchase}
-                    disabled={hasActiveScheduledPurchase}
-                    className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
-                      hasActiveScheduledPurchase
-                        ? 'bg-gray-400 cursor-not-allowed text-white'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                    title={hasActiveScheduledPurchase ? 'There is already a Scheduled Purchase for this item' : ''}
-                  >
-                    Schedule Purchase
-                  </button>
+              {/* Seller actions above composer (product-specific chats) */}
+              {activeConversation?.productId && (
+                <div className="mb-2 flex gap-2 flex-wrap">
+                  {/* Seller sees Schedule */}
+                  {isSeller && (
+                    <button
+                      onClick={handleSchedulePurchase}
+                      disabled={hasActiveScheduledPurchase}
+                      className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+                        hasActiveScheduledPurchase
+                          ? 'bg-gray-400 cursor-not-allowed text-white'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}
+                      title={hasActiveScheduledPurchase ? 'There is already a Scheduled Purchase for this item' : ''}
+                    >
+                      Schedule Purchase
+                    </button>
+                  )}
+
+                  {/* Buyer sees Confirm */}
+                  {!isSeller && (
+                    <button
+                      onClick={handleConfirmPurchase}
+                      disabled={!hasAcceptedScheduledPurchase}
+                      className={`px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+                        !hasAcceptedScheduledPurchase
+                          ? 'bg-gray-400 cursor-not-allowed text-white'
+                          : 'bg-green-600 hover:bg-green-700 text-white'
+                      }`}
+                      title={!hasAcceptedScheduledPurchase ? 'You must have an ACCEPTED Scheduled Purchase before confirming' : ''}
+                    >
+                      Confirm Purchase
+                    </button>
+                  )}
                 </div>
               )}
               
