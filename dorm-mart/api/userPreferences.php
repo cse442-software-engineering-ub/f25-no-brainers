@@ -9,18 +9,8 @@ setSecureCORS();
 require_once __DIR__ . '/auth/auth_handle.php';
 require_once __DIR__ . '/database/db_connect.php';
 
-// Include PHPMailer for promo email functionality
-$PROJECT_ROOT = dirname(__DIR__, 1);
-if (file_exists($PROJECT_ROOT . '/vendor/autoload.php')) {
-    require $PROJECT_ROOT . '/vendor/autoload.php';
-} else {
-    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
-    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/SMTP.php';
-    require $PROJECT_ROOT . '/vendor/phpmailer/phpmailer/src/Exception.php';
-}
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+// Include shared email utility (uses load_env.php, optimized SMTP settings)
+require_once __DIR__ . '/utility/email_sender.php';
 
 // Handle CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -89,62 +79,12 @@ function getPrefs(mysqli $conn, int $userId)
 
 function sendPromoWelcomeEmail(array $user): array
 {
-    $PROJECT_ROOT = dirname(__DIR__, 1);
+    $first = $user['firstName'] ?: 'Student';
+    $subject = 'Welcome to Dorm Mart Promotional Updates';
+    $toName = trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? ''));
 
-    // Load environment variables
-    foreach (["$PROJECT_ROOT/.env.development", "$PROJECT_ROOT/.env.local", "$PROJECT_ROOT/.env.production", "$PROJECT_ROOT/.env.cattle"] as $envFile) {
-        if (is_readable($envFile)) {
-            foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-                $line = trim($line);
-                if ($line === '' || str_starts_with($line, '#')) continue;
-                [$k, $v] = array_pad(explode('=', $line, 2), 2, '');
-                putenv(trim($k) . '=' . trim($v));
-            }
-            break;
-        }
-    }
-
-    // Ensure PHP is using UTF-8 internally
-    if (function_exists('mb_internal_encoding')) {
-        @mb_internal_encoding('UTF-8');
-    }
-
-    $mail = new PHPMailer(true);
-    try {
-        // SMTP Configuration
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
-
-        // Optimizations for faster email delivery
-        $mail->Timeout = 30;
-        $mail->SMTPKeepAlive = false;
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
-
-        // Tell PHPMailer we are sending UTF-8
-        $mail->CharSet   = 'UTF-8';
-        $mail->Encoding  = 'base64';
-
-        // From/To
-        $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
-        $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
-        $mail->addAddress($user['email'], trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? '')));
-
-        $first   = $user['firstName'] ?: 'Student';
-        $subject = 'Welcome to Dorm Mart Promotional Updates';
-
-        // HTML email content - Subtle improvements to dark theme
-        $html = <<<HTML
+    // Exact same email template as before (preserved for compatibility)
+    $html = <<<HTML
 <!doctype html>
 <html>
   <head>
@@ -192,8 +132,8 @@ function sendPromoWelcomeEmail(array $user): array
 </html>
 HTML;
 
-        // Plain-text version
-        $text = <<<TEXT
+    // Plain-text version (exact same as before)
+    $text = <<<TEXT
 Promotional Updates - Dorm Mart
 
 Dear {$first},
@@ -215,15 +155,14 @@ The Dorm Mart Team
 (This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
 TEXT;
 
-        $mail->Subject = $subject;
-        $mail->isHTML(true);
-        $mail->Body    = $html;
-        $mail->AltBody = $text;
-
-        $mail->send();
+    // Use shared email utility (optimized SMTP settings, connection reuse)
+    $result = sendEmail($user['email'], $toName, $subject, $html, $text);
+    
+    // Preserve original return format ['ok' => bool, 'error' => string|null]
+    if ($result['success']) {
         return ['ok' => true, 'error' => null];
-    } catch (Exception $e) {
-        return ['ok' => false, 'error' => $mail->ErrorInfo];
+    } else {
+        return ['ok' => false, 'error' => $result['error'] ?? 'Failed to send email'];
     }
 }
 

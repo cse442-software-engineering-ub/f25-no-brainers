@@ -44,30 +44,54 @@ foreach ($files as $path) {
 
   $conn->begin_transaction();                                   // Start an atomic transaction
 
-  if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
-    $err = $conn->error;                                        // Capture the MySQL error message
-    $conn->rollback();                                          // Undo any partial changes
+  try {
+    // Disable foreign key checks to allow deletion/updates of user_accounts
+    // that are referenced by messages and other tables (test data only)
+    if (!$conn->query("SET FOREIGN_KEY_CHECKS = 0")) {
+      throw new Exception("Failed to disable foreign key checks: " . $conn->error);
+    }
+
+    if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
+      $err = $conn->error;                                        // Capture the MySQL error message
+      // Re-enable FK checks before rollback
+      $conn->query("SET FOREIGN_KEY_CHECKS = 1");
+      $conn->rollback();                                          // Undo any partial changes
+      echo json_encode([
+        "success" => false,                       // Report failure (which file + why)
+        "message" => "Failed: $name — $err"
+      ]);
+      exit;                                                       // Stop on first failure
+    }
+
+    // Flush all result sets produced by multi_query to clear the connection for next use
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+
+    // Re-enable foreign key checks after successful execution
+    if (!$conn->query("SET FOREIGN_KEY_CHECKS = 1")) {
+      throw new Exception("Failed to re-enable foreign key checks: " . $conn->error);
+    }
+
+    // Record that we ran this file; if it exists, just bump the timestamp
+    $stmt = $conn->prepare(                                       // Use the tracking table we created above
+      "INSERT INTO data_migrations (filename) VALUES (?)
+       ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP"
+    );
+    $stmt->bind_param("s", $name);                                // Bind the filename as string
+    $stmt->execute();                                             // Insert or update the timestamp
+    $stmt->close();                                               // Free the statement
+
+    $conn->commit();                                              // Finalize this migration's transaction
+    $ran[] = $name;                                               // Add to the list of executed files
+  } catch (Exception $e) {
+    // Ensure FK checks are re-enabled even on error
+    $conn->query("SET FOREIGN_KEY_CHECKS = 1");
+    $conn->rollback();
     echo json_encode([
-      "success" => false,                       // Report failure (which file + why)
-      "message" => "Failed: $name — $err"
+      "success" => false,
+      "message" => "Failed: $name — " . $e->getMessage()
     ]);
-    exit;                                                       // Stop on first failure
+    exit;
   }
-
-  // Flush all result sets produced by multi_query to clear the connection for next use
-  while ($conn->more_results() && $conn->next_result()) { /* flush */ }
-
-  // Record that we ran this file; if it exists, just bump the timestamp
-  $stmt = $conn->prepare(                                       // Use the tracking table we created above
-    "INSERT INTO data_migrations (filename) VALUES (?)
-     ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP"
-  );
-  $stmt->bind_param("s", $name);                                // Bind the filename as string
-  $stmt->execute();                                             // Insert or update the timestamp
-  $stmt->close();                                               // Free the statement
-
-  $conn->commit();                                              // Finalize this migration’s transaction
-  $ran[] = $name;                                               // Add to the list of executed files
 }
 
 echo json_encode(["success" => true, "applied" => $ran]);        // Return summary of executed files

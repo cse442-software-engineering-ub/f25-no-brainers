@@ -40,7 +40,8 @@ For local setup and deployment details, see `README.project_setup.md`.
 **Frontend:** React, Tailwind CSS  
 **Backend:** PHP 8+, MySQL  
 **Auth:** PHP sessions + `password_hash` / `password_verify` (bcrypt)  
-**Real-time:** WebSocket (Ratchet PHP library)  
+**Email:** PHPMailer (Gmail SMTP)  
+**Real-time:** HTTP polling (REST API with 1-5s intervals)    
 **Dev Server:** XAMPP (Apache + MySQL)  
 
 ## Production Server

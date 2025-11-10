@@ -23,6 +23,15 @@ function build_api_url(string $path): string {
     return $scheme . '://' . $host . $base . $path;
 }
 
+function extract_http_status_code(): int {
+    global $http_response_header;
+    if (!isset($http_response_header) || empty($http_response_header)) {
+        return 0;
+    }
+    preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+    return isset($matches[1]) ? (int)$matches[1] : 0;
+}
+
 // Get JSON input
 $input = json_decode(file_get_contents('php://input'), true) ?? [];
 
@@ -55,6 +64,7 @@ $context = stream_context_create([
 ]);
 
 $result = @file_get_contents($forgotPasswordUrl, false, $context);
+$httpStatusCode = extract_http_status_code();
 
 if ($result === false) {
     http_response_code(500);
@@ -68,21 +78,29 @@ if ($result === false) {
 
 $response = json_decode($result, true);
 
-// Expect API to return an error for non-existent email
-if (isset($response['success']) && $response['success'] === false && isset($response['error'])) {
+// Verify HTTP status code is 200 (API returns 200 with error in body for non-existent email)
+// Verify error message indicates email not found
+$errorText = (string)($response['error'] ?? '');
+$hasExpectedError = $errorText !== '' && stripos($errorText, 'Email not found') !== false;
+$hasCorrectStatus = $httpStatusCode === 200;
+$hasSuccessFalse = isset($response['success']) && $response['success'] === false;
+
+if ($hasCorrectStatus && $hasSuccessFalse && $hasExpectedError) {
     http_response_code(200);
     echo json_encode([
-        'success' => false,
-        'error' => $response['error'],
+        'success' => true,
         'test_result' => 'PASS - API returned error for invalid/non-existent email',
+        'http_status_code' => $httpStatusCode,
         'api_response' => $response,
     ]);
 } else {
     http_response_code(200);
     echo json_encode([
         'success' => false,
-        'error' => 'API did not return expected error structure',
+        'test_result' => 'FAIL - Expected error response for invalid/non-existent email',
+        'http_status_code' => $httpStatusCode,
+        'expected_status' => 200,
+        'expected_error' => 'Email not found',
         'api_response' => $response,
-        'test_result' => 'FAIL - Expected error response for invalid/non-existent email'
     ]);
 }
