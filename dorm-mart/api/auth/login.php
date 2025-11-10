@@ -91,15 +91,13 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
 }
 
 try {
-    // Get client IP address for IP-based rate limiting
-    $clientIp = get_client_ip();
-    
-    // CRITICAL: Check IP rate limiting BEFORE email check
-    // This blocks all attempts from a locked IP regardless of email
-    // IP-based rate limiting prevents email enumeration and account lockout attacks
-    $ipRateLimitCheck = check_ip_rate_limit($clientIp);
-    if ($ipRateLimitCheck['blocked']) {
-        $remainingMinutes = get_remaining_lockout_minutes($ipRateLimitCheck['lockout_until']);
+    // CRITICAL: Check session rate limiting BEFORE email check
+    // This blocks all attempts from a locked session regardless of email
+    // Session-based rate limiting prevents email enumeration and account lockout attacks
+    // Note: Can be bypassed by clearing cookies, but stops casual brute force attacks
+    $sessionRateLimitCheck = check_session_rate_limit();
+    if ($sessionRateLimitCheck['blocked']) {
+        $remainingMinutes = get_remaining_lockout_minutes($sessionRateLimitCheck['lockout_until']);
         http_response_code(429);
         echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
         exit;
@@ -125,8 +123,9 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
-        // Record IP attempt only (email-based rate limiting removed to prevent account lockout attacks)
-        record_ip_failed_attempt($clientIp);
+        // Always return same error message to prevent email enumeration
+        // Session-based rate limiting prevents account lockout attacks
+        record_session_failed_attempt();
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -141,8 +140,9 @@ try {
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         
-        // Record failed attempt for IP only (email-based rate limiting removed to prevent account lockout attacks)
-        record_ip_failed_attempt($clientIp);
+        // Record failed attempt (always return same error message to prevent email enumeration)
+        // Session-based rate limiting prevents account lockout attacks
+        record_session_failed_attempt();
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);

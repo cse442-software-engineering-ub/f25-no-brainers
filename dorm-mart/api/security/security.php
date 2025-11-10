@@ -387,244 +387,157 @@ function get_remaining_lockout_minutes($lockoutUntil) {
 
 /**
  * Reset all lockouts (admin function)
+ * NOTE: With session-based rate limiting, lockouts are stored in individual sessions.
+ * This function is deprecated - users can clear their own lockouts by clearing cookies.
+ * Kept for API compatibility but does nothing.
  */
 function reset_all_lockouts() {
-    require_once __DIR__ . '/../utility/reset_user_account_lockouts.php';
-    reset_all_lockouts();
+    // Session-based rate limiting: lockouts are per-session, cannot be reset globally
+    // Users can clear their own lockouts by clearing cookies
+    return;
 }
 
 /**
- * Get client IP address
- * @return string Client IP address
- */
-function get_client_ip() {
-    // Simple IP extraction for undergrad project
-    // Gets IP from REMOTE_ADDR (no proxy handling needed)
-    $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    // Sanitize and return
-    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
-}
-
-/**
- * Check if IP address has exceeded rate limit
- * @param string $ipAddress Client IP address
+ * Check if session has exceeded rate limit
  * @param int $maxAttempts Maximum attempts before lockout (default: 5)
  * @param int $lockoutMinutes Lockout duration in minutes (default: 5)
  * @return array Rate limit status
  */
-function check_ip_rate_limit($ipAddress, $maxAttempts = 5, $lockoutMinutes = 5) {
-    try {
-        require_once __DIR__ . '/../database/db_connect.php';
-        
-        $conn = db();
-        if (!$conn) {
-            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-        }
+function check_session_rate_limit($maxAttempts = 5, $lockoutMinutes = 5) {
+    // Ensure session is started
+    require_once __DIR__ . '/../auth/auth_handle.php';
+    auth_boot_session();
     
-    // Get current attempt count, last attempt time, and lockout status
-    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-    $stmt = $conn->prepare("
-        SELECT failed_attempts, last_failed_attempt, lockout_until 
-        FROM ip_login_attempts 
-        WHERE ip_address = ? 
-        LIMIT 1
-    ");
-    
-    // If prepare fails (e.g., table doesn't exist), don't block the user
-    if (!$stmt) {
-        $conn->close();
-        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+    // Initialize session variables if they don't exist
+    if (!isset($_SESSION['login_failed_attempts'])) {
+        $_SESSION['login_failed_attempts'] = 0;
+    }
+    if (!isset($_SESSION['login_last_failed_attempt'])) {
+        $_SESSION['login_last_failed_attempt'] = null;
+    }
+    if (!isset($_SESSION['login_lockout_until'])) {
+        $_SESSION['login_lockout_until'] = null;
     }
     
-    $stmt->bind_param('s', $ipAddress);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($result->num_rows === 0) {
-        $stmt->close();
-        $conn->close();
-        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-    }
-    
-    $row = $result->fetch_assoc();
-    $stmt->close();
-    
-    $attempts = (int)$row['failed_attempts'];
-    $lastAttempt = $row['last_failed_attempt'];
-    $lockoutUntil = $row['lockout_until'];
+    $attempts = (int)$_SESSION['login_failed_attempts'];
+    $lastAttempt = $_SESSION['login_last_failed_attempt'];
+    $lockoutUntil = $_SESSION['login_lockout_until'];
     
     // If no attempts, not blocked
     if ($attempts === 0) {
-        $conn->close();
         return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
     }
     
     // DECAY SYSTEM: Reduce attempts by 1 if 10+ seconds have passed since last attempt
     $decaySeconds = 10;
     $currentTime = time();
-    $lastAttemptTime = $lastAttempt ? strtotime($lastAttempt) : 0;
+    $lastAttemptTime = $lastAttempt ? (int)$lastAttempt : 0;
     $timeSinceLastAttempt = $currentTime - $lastAttemptTime;
     
     // Apply decay: if 10+ seconds have passed, reduce by exactly 1 (not by time elapsed)
     if ($timeSinceLastAttempt >= $decaySeconds && $attempts > 0) {
         $newAttempts = max(0, $attempts - 1);
         
-        // Update attempts if they've decayed
+        // Update session if attempts have decayed
         if ($newAttempts !== $attempts) {
-            $updateStmt = $conn->prepare('UPDATE ip_login_attempts SET failed_attempts = ? WHERE ip_address = ?');
-            if ($updateStmt) {
-                $updateStmt->bind_param('is', $newAttempts, $ipAddress);
-                $updateStmt->execute();
-                $updateStmt->close();
-                $attempts = $newAttempts;
-            }
+            $_SESSION['login_failed_attempts'] = $newAttempts;
+            $attempts = $newAttempts;
         }
     }
     
-    // Check if IP is currently locked out (regardless of attempt count)
+    // Check if session is currently locked out (regardless of attempt count)
     if ($lockoutUntil) {
         $currentTime = time();
-        $lockoutExpiry = strtotime($lockoutUntil);
+        $lockoutExpiry = (int)$lockoutUntil;
         
         if ($currentTime >= $lockoutExpiry) {
             // Lockout has expired, clear it AND reset attempts
-            $updateStmt = $conn->prepare('UPDATE ip_login_attempts SET lockout_until = NULL, failed_attempts = 0, last_failed_attempt = NULL WHERE ip_address = ?');
-            if ($updateStmt) {
-                $updateStmt->bind_param('s', $ipAddress);
-                $updateStmt->execute();
-                $updateStmt->close();
-            }
-            $conn->close();
+            $_SESSION['login_failed_attempts'] = 0;
+            $_SESSION['login_last_failed_attempt'] = null;
+            $_SESSION['login_lockout_until'] = null;
             return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
         }
         
         // Still locked out
-        $conn->close();
-        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
+        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => date('Y-m-d H:i:s', $lockoutExpiry)];
     }
     
     // Check if we need to start a new lockout (5+ attempts)
     if ($attempts >= $maxAttempts) {
         $currentTime = time();
         $lockoutExpiry = $currentTime + ($lockoutMinutes * 60);
-        $lockoutUntil = date('Y-m-d H:i:s', $lockoutExpiry);
+        $lockoutUntilStr = date('Y-m-d H:i:s', $lockoutExpiry);
         
-        // Set lockout timestamp
-        $updateStmt = $conn->prepare('UPDATE ip_login_attempts SET lockout_until = ? WHERE ip_address = ?');
-        if ($updateStmt) {
-            $updateStmt->bind_param('ss', $lockoutUntil, $ipAddress);
-            $updateStmt->execute();
-            $updateStmt->close();
-        }
+        // Set lockout timestamp in session
+        $_SESSION['login_lockout_until'] = $lockoutExpiry;
         
-        $conn->close();
-        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntil];
+        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntilStr];
     }
     
     // Don't clear timestamps here - let them persist for lockout tracking
-    
-    $conn->close();
     return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
-    } catch (Exception $e) {
-        // If any error occurs, don't block the user
-        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+}
+
+/**
+ * Record a failed login attempt for session-based rate limiting
+ */
+function record_session_failed_attempt() {
+    // Ensure session is started
+    require_once __DIR__ . '/../auth/auth_handle.php';
+    auth_boot_session();
+    
+    // Initialize session variables if they don't exist
+    if (!isset($_SESSION['login_failed_attempts'])) {
+        $_SESSION['login_failed_attempts'] = 0;
+    }
+    if (!isset($_SESSION['login_last_failed_attempt'])) {
+        $_SESSION['login_last_failed_attempt'] = null;
+    }
+    if (!isset($_SESSION['login_lockout_until'])) {
+        $_SESSION['login_lockout_until'] = null;
+    }
+    
+    $currentAttempts = (int)$_SESSION['login_failed_attempts'];
+    $lockoutUntil = $_SESSION['login_lockout_until'];
+    
+    // Don't apply decay when recording new attempts - only when checking rate limits
+    // This ensures that new attempts are always recorded regardless of time gaps
+    
+    // Now increment by 1
+    $newAttempts = $currentAttempts + 1;
+    
+    // Check if we need to set lockout (5+ attempts)
+    $lockoutUntilValue = null;
+    if ($newAttempts >= 5) {
+        // Only set lockout if not already locked out
+        if (!$lockoutUntil) {
+            $currentTime = time();
+            $lockoutExpiry = $currentTime + (5 * 60); // 5 minutes
+            $lockoutUntilValue = $lockoutExpiry;
+        } else {
+            $lockoutUntilValue = (int)$lockoutUntil;
+        }
+    }
+    
+    // Update session with new attempt count and timestamp
+    $_SESSION['login_failed_attempts'] = $newAttempts;
+    $_SESSION['login_last_failed_attempt'] = time();
+    
+    if ($lockoutUntilValue) {
+        $_SESSION['login_lockout_until'] = $lockoutUntilValue;
     }
 }
 
 /**
- * Record a failed login attempt for IP-based rate limiting
- * @param string $ipAddress Client IP address
+ * Reset session rate limiting (call on successful login)
  */
-function record_ip_failed_attempt($ipAddress) {
-    try {
-        require_once __DIR__ . '/../database/db_connect.php';
-        
-        $conn = db();
-        if (!$conn) {
-            return; // Silently fail if no database connection
-        }
+function reset_session_rate_limit() {
+    require_once __DIR__ . '/../auth/auth_handle.php';
+    auth_boot_session();
     
-    // First check if IP exists and get current attempt data
-    // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-    $checkStmt = $conn->prepare('SELECT failed_attempts, last_failed_attempt, lockout_until FROM ip_login_attempts WHERE ip_address = ?');
-    
-    // If prepare fails (e.g., table doesn't exist), silently fail
-    if (!$checkStmt) {
-        $conn->close();
-        return;
-    }
-    
-    $checkStmt->bind_param('s', $ipAddress);
-    $checkStmt->execute();
-    $result = $checkStmt->get_result();
-    $checkStmt->close();
-    
-    if ($result->num_rows > 0) {
-        // IP exists, get current data
-        $row = $result->fetch_assoc();
-        $currentAttempts = (int)$row['failed_attempts'];
-        $lastAttempt = $row['last_failed_attempt'];
-        $lockoutUntil = $row['lockout_until'];
-        
-        // Don't apply decay when recording new attempts - only when checking rate limits
-        // This ensures that new attempts are always recorded regardless of time gaps
-        
-        // Now increment by 1
-        $newAttempts = $currentAttempts + 1;
-        
-        // Check if we need to set lockout (5+ attempts)
-        $lockoutUntilValue = null;
-        if ($newAttempts >= 5) {
-            // Only set lockout if not already locked out
-            if (!$lockoutUntil) {
-                $currentTime = time();
-                $lockoutExpiry = $currentTime + (5 * 60); // 5 minutes
-                $lockoutUntilValue = date('Y-m-d H:i:s', $lockoutExpiry);
-            } else {
-                $lockoutUntilValue = $lockoutUntil;
-            }
-        }
-        
-        // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-        if ($lockoutUntilValue) {
-            $stmt = $conn->prepare('UPDATE ip_login_attempts SET failed_attempts = ?, last_failed_attempt = NOW(), lockout_until = ? WHERE ip_address = ?');
-            if ($stmt) {
-                $stmt->bind_param('iss', $newAttempts, $lockoutUntilValue, $ipAddress);
-                $stmt->execute();
-                $stmt->close();
-            }
-        } else {
-            $stmt = $conn->prepare('UPDATE ip_login_attempts SET failed_attempts = ?, last_failed_attempt = NOW() WHERE ip_address = ?');
-            if ($stmt) {
-                $stmt->bind_param('is', $newAttempts, $ipAddress);
-                $stmt->execute();
-                $stmt->close();
-            }
-        }
-        
-        // Ensure the update is committed
-        $conn->commit();
-    } else {
-        // IP doesn't exist, create a new record
-        // SQL INJECTION PROTECTION: Using prepared statement with parameter binding to prevent SQL injection attacks
-        $stmt = $conn->prepare('INSERT INTO ip_login_attempts (ip_address, failed_attempts, last_failed_attempt) VALUES (?, 1, NOW())');
-        
-        // If prepare fails (e.g., table doesn't exist), silently fail
-        if ($stmt) {
-            $stmt->bind_param('s', $ipAddress);
-            $stmt->execute();
-            $stmt->close();
-            
-            // Ensure the insert is committed
-            $conn->commit();
-        }
-    }
-    
-    $conn->close();
-    } catch (Exception $e) {
-        // Silently fail if any error occurs
-        return;
-    }
+    $_SESSION['login_failed_attempts'] = 0;
+    $_SESSION['login_last_failed_attempt'] = null;
+    $_SESSION['login_lockout_until'] = null;
 }
 
 // ============================================================================

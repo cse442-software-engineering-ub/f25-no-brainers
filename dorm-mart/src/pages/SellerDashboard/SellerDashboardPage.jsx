@@ -92,12 +92,9 @@ function SellerDashboardPage() {
             }
             const result = await response.json();
 
-            console.log('Seller dashboard API response:', result); // Debug log
-
             if (result.success) {
                 // Ensure result.data is an array
                 const dataArray = Array.isArray(result.data) ? result.data : [];
-                console.log('Fetched listings count:', dataArray.length); // Debug log
                 
                 // Transform backend data to match frontend expectations
                 const transformedListings = dataArray.map(item => {
