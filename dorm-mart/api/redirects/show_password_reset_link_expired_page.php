@@ -1,5 +1,10 @@
 <?php
 // Universal page for expired/invalid reset links
+
+// Include security headers
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -127,10 +132,10 @@
         }
         ?>
 
-        <a href="<?php echo $loginLink; ?>" class="btn">Go to Login</a>
+        <a href="<?php echo htmlspecialchars($loginLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn">Go to Login</a>
 
         <div class="back-to-login">
-            <a href="<?php echo $forgotLink; ?>">Request New Reset Link</a>
+            <a href="<?php echo htmlspecialchars($forgotLink, ENT_QUOTES, 'UTF-8'); ?>">Request New Reset Link</a>
         </div>
     </div>
 </body>

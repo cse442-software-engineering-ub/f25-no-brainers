@@ -10,7 +10,8 @@ declare(strict_types=1);
 require_once __DIR__ . '/../security/security.php';
 require_once __DIR__ . '/auth_handle.php';
 
-initSecurity();
+setSecurityHeaders();
+setSecureCORS();
 
 header('Content-Type: application/json; charset=utf-8');
 

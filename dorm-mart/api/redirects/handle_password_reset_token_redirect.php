@@ -2,10 +2,22 @@
 // Handle password reset token redirects
 // Redirect to the password reset page with the token
 
-$host = $_SERVER['HTTP_HOST'] ?? '';
-$token = $_GET['token'] ?? '';
+// Include security headers
+require_once __DIR__ . '/../security/security.php';
+setSecurityHeaders();
+setSecureCORS();
 
-// Validate token exists
+$host = $_SERVER['HTTP_HOST'] ?? '';
+$tokenRaw = $_GET['token'] ?? '';
+
+// XSS PROTECTION: Validate and sanitize token input
+// Token should be hex string (64 chars for 32 bytes hex encoded)
+$token = '';
+if (!empty($tokenRaw) && is_string($tokenRaw) && preg_match('/^[a-f0-9]{64}$/i', $tokenRaw)) {
+    $token = $tokenRaw;
+}
+
+// Validate token exists and is valid format
 if (empty($token)) {
     // No token provided, redirect to login with error
     if (strpos($host, 'cattle.cse.buffalo.edu') !== false) {

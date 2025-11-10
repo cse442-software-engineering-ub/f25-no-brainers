@@ -52,12 +52,14 @@ $res = $stmt->get_result();                           // fetch mysqli_result
 
 $rows = [];
 while ($row = $res->fetch_assoc()) {
+    // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
+    // No need to manually escape - json_encode handles it safely
     $rows[] = [
         'item_id' => (int)$row['item_id'],
-        'title' => escapeHtml($row['title']),
-        'sold_by' => escapeHtml($row['sold_by']),
+        'title' => $row['title'],
+        'sold_by' => $row['sold_by'],
         'transacted_at' => $row['transacted_at'],
-        'image_url' => escapeHtml($row['image_url'] ?? '')
+        'image_url' => $row['image_url'] ?? ''
     ];
 }
 

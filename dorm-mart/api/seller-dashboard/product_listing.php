@@ -16,7 +16,8 @@ try {
 
   // Security
   require $API_ROOT . '/security/security.php';
-  initSecurity();
+  setSecurityHeaders();
+  setSecureCORS();
 
   // CORS / method
   if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }

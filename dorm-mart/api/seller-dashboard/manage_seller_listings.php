@@ -132,11 +132,13 @@ try {
         $acceptTrades = isset($row['trades']) ? ((int)$row['trades'] === 1) : false;
         $itemMeetLocation = isset($row['meet_location']) ? trim((string)$row['meet_location']) : null;
 
+        // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
+        // No need to manually escape - json_encode handles it safely
         $data[] = [
             'id' => (int)$row['product_id'],
-            'title' => escapeHtml((string)$row['title']),
+            'title' => (string)$row['title'],
             'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
-            'status' => escapeHtml($status),
+            'status' => $status,
             'buyer_user_id' => $buyerId !== null ? (int)$buyerId : null,
             'seller_user_id' => (int)$row['seller_id'],
             'created_at' => $row['date_listed'],
