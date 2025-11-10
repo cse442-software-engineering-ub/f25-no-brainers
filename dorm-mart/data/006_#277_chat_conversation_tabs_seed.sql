@@ -36,7 +36,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'Blue Water Bottle',
-  JSON_ARRAY('Accessories', 'Health & Fitness'),
+  JSON_ARRAY('Dorm Essentials', 'Kitchen'),
   'North Campus',
   'Like New',
   'A high-quality blue water bottle perfect for staying hydrated on campus. Great condition with no leaks or damage.',
@@ -67,7 +67,7 @@ INSERT INTO INVENTORY (
   sold
 ) VALUES (
   'White and Blue Backpack',
-  JSON_ARRAY('Accessories', 'School Supplies'),
+  JSON_ARRAY('School'),
   'North Campus',
   'Good',
   'A stylish white and blue backpack with multiple compartments. Perfect for carrying books and laptop to class.',

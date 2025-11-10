@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 
 function Icon({ to, src, alt, badge }) {
-
   const showBadge = Number(badge) > 0;
-  
+
   return (
     <li>
       {/* relative: positioning context for the absolute badge */}

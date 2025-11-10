@@ -7,7 +7,8 @@ const REMEMBER_TTL_DAYS = 7; // persistent login length
 function auth_boot_session(): void
 {
   static $booted = false;
-  if ($booted) return;
+  if ($booted)
+    return;
 
   ini_set('session.use_strict_mode', '1');
   ini_set('session.cookie_httponly', '1');
@@ -16,13 +17,14 @@ function auth_boot_session(): void
 
   session_set_cookie_params([
     'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => $secure,
+    'path' => '/',
+    'secure' => $secure,
     'httponly' => true,
     'samesite' => 'Lax', // if your frontend is cross-site XHR, set 'None' + secure=true
   ]);
 
-  if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+  if (session_status() !== PHP_SESSION_ACTIVE)
+    session_start();
   $booted = true;
 }
 
@@ -38,7 +40,7 @@ function issue_remember_cookie(int $userId): void
 {
   require_once __DIR__ . '/../database/db_connect.php';
   $token = bin2hex(random_bytes(32));                 // 64 hex chars
-  $hash  = password_hash($token, PASSWORD_DEFAULT);   // store only the hash
+  $hash = password_hash($token, PASSWORD_DEFAULT);   // store only the hash
 
   $conn = db();
   $stmt = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
@@ -49,9 +51,9 @@ function issue_remember_cookie(int $userId): void
 
   $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
   setcookie(REMEMBER_COOKIE, $userId . ':' . $token, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
+    'expires' => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
+    'path' => '/',
+    'secure' => $secure,
     'httponly' => true,
     'samesite' => 'Lax', // see comment above
   ]);
@@ -71,9 +73,9 @@ function clear_remember_cookie(?int $userId = null): void
   }
   // clear client cookie
   setcookie(REMEMBER_COOKIE, '', [
-    'expires'  => time() - 3600,
-    'path'     => '/',
-    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+    'expires' => time() - 3600,
+    'path' => '/',
+    'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
     'httponly' => true,
     'samesite' => 'Lax',
   ]);
@@ -85,31 +87,35 @@ function clear_remember_cookie(?int $userId = null): void
 function ensure_session(): void
 {
   auth_boot_session();
-  if (!empty($_SESSION['user_id'])) return;
+  if (!empty($_SESSION['user_id']))
+    return;
 
-  if (empty($_COOKIE[REMEMBER_COOKIE])) return;
+  if (empty($_COOKIE[REMEMBER_COOKIE]))
+    return;
   $parts = explode(':', $_COOKIE[REMEMBER_COOKIE], 2);
-  if (count($parts) !== 2) return;
+  if (count($parts) !== 2)
+    return;
 
   [$uidStr, $token] = $parts;
-  if (!ctype_digit($uidStr) || $token === '' || strlen($token) > 256) return;
-  $uid = (int)$uidStr;
+  if (!ctype_digit($uidStr) || $token === '' || strlen($token) > 256)
+    return;
+  $uid = (int) $uidStr;
 
   require_once __DIR__ . '/../database/db_connect.php';
   $conn = db();
   $stmt = $conn->prepare('SELECT hash_auth FROM user_accounts WHERE user_id = ? LIMIT 1');
   $stmt->bind_param('i', $uid);
   $stmt->execute();
-  $res  = $stmt->get_result();
+  $res = $stmt->get_result();
   if ($res->num_rows !== 1) {
     $stmt->close();
     $conn->close();
     return;
   }
-  $row  = $res->fetch_assoc();
+  $row = $res->fetch_assoc();
   $stmt->close();
 
-  $hash = (string)($row['hash_auth'] ?? '');
+  $hash = (string) ($row['hash_auth'] ?? '');
   if ($hash === '' || !password_verify($token, $hash)) {
     $conn->close();
     return;
@@ -120,7 +126,7 @@ function ensure_session(): void
   $_SESSION['user_id'] = $uid;
 
   $newToken = bin2hex(random_bytes(32));
-  $newHash  = password_hash($newToken, PASSWORD_DEFAULT);
+  $newHash = password_hash($newToken, PASSWORD_DEFAULT);
   $upd = $conn->prepare('UPDATE user_accounts SET hash_auth = ? WHERE user_id = ?');
   $upd->bind_param('si', $newHash, $uid);
   $upd->execute();
@@ -129,9 +135,9 @@ function ensure_session(): void
 
   $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
   setcookie(REMEMBER_COOKIE, $uid . ':' . $newToken, [
-    'expires'  => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
-    'path'     => '/',
-    'secure'   => $secure,
+    'expires' => time() + REMEMBER_TTL_DAYS * 24 * 60 * 60,
+    'path' => '/',
+    'secure' => $secure,
     'httponly' => true,
     'samesite' => 'Lax',
   ]);
@@ -159,11 +165,11 @@ function logout_destroy_session(): void
   $_SESSION = [];
   $params = session_get_cookie_params();
   setcookie(session_name(), '', [
-    'expires'  => time() - 42000,
-    'path'     => $params['path'] ?? '/',
-    'domain'   => $params['domain'] ?? '',
-    'secure'   => (bool)($params['secure'] ?? false),
-    'httponly' => (bool)($params['httponly'] ?? true),
+    'expires' => time() - 42000,
+    'path' => $params['path'] ?? '/',
+    'domain' => $params['domain'] ?? '',
+    'secure' => (bool) ($params['secure'] ?? false),
+    'httponly' => (bool) ($params['httponly'] ?? true),
     'samesite' => 'Lax',
   ]);
   session_destroy();
@@ -177,9 +183,10 @@ function logout_destroy_session(): void
  * Generate or retrieve CSRF token from session
  * @return string CSRF token (64-character hex string)
  */
-function generate_csrf_token(): string {
+function generate_csrf_token(): string
+{
   auth_boot_session();
-  
+
   if (!isset($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
   }
@@ -191,13 +198,14 @@ function generate_csrf_token(): string {
  * @param string $token Token to validate
  * @return bool True if token is valid
  */
-function validate_csrf_token(string $token): bool {
+function validate_csrf_token(string $token): bool
+{
   auth_boot_session();
-  
+
   if (!isset($_SESSION['csrf_token'])) {
     return false;
   }
-  
+
   return hash_equals($_SESSION['csrf_token'], $token);
 }
 
@@ -205,9 +213,10 @@ function validate_csrf_token(string $token): bool {
  * Require valid CSRF token for state-changing operations
  * Returns 403 if token is missing or invalid
  */
-function require_csrf_token(): void {
+function require_csrf_token(): void
+{
   $token = $_POST['csrf_token'] ?? $_GET['csrf_token'] ?? null;
-  
+
   if (!$token || !validate_csrf_token($token)) {
     http_response_code(403);
     echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);

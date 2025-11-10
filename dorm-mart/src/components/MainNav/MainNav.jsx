@@ -1,15 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import chatIcon from '../../assets/icons/icons8-chat-96.png'
-import userIcon from '../../assets/icons/icons8-user-icon-96.png'
-import notificationIcon from '../../assets/icons/icons8-notification-96.png'
-import settingIcon from '../../assets/icons/icons8-setting-96.png'
-import Icon from './Icon'
-import searchIcon from '../../assets/icons/icons8-search-96.png';
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import chatIcon from "../../assets/icons/icons8-chat-96.png";
+import userIcon from "../../assets/icons/icons8-user-icon-96.png";
+import notificationIcon from "../../assets/icons/icons8-notification-96.png";
+import settingIcon from "../../assets/icons/icons8-setting-96.png";
+import Icon from "./Icon";
+import searchIcon from "../../assets/icons/icons8-search-96.png";
 // filter icon removed; filters move to search page
-import { logout } from '../../utils/handle_auth';
+import { logout } from "../../utils/handle_auth";
 import { ChatContext } from "../../context/ChatContext";
-import { useContext } from 'react';
+import { useContext } from "react";
 
 function MainNav() {
     const [showDropdown, setShowDropdown] = useState(false);
@@ -83,17 +83,18 @@ function MainNav() {
         let includeDesc = false;
         try {
             const spCurrent = new URLSearchParams(location.search || "");
-            const qDesc = spCurrent.get('desc') || spCurrent.get('includeDescription');
-            if (qDesc && (qDesc === '1' || qDesc === 'true')) {
+            const qDesc =
+                spCurrent.get("desc") || spCurrent.get("includeDescription");
+            if (qDesc && (qDesc === "1" || qDesc === "true")) {
                 includeDesc = true;
             } else {
-                includeDesc = (localStorage.getItem('dm_include_desc') === '1');
+                includeDesc = localStorage.getItem("dm_include_desc") === "1";
             }
-        } catch (_) {}
+        } catch (_) { }
 
         const sp = new URLSearchParams();
-        if (term) sp.set('search', term);
-        if (includeDesc) sp.set('desc', '1');
+        if (term) sp.set("search", term);
+        if (includeDesc) sp.set("desc", "1");
         // Navigate to listings; allow empty term to show all
         const qs = sp.toString();
         navigate(qs ? `/app/listings?${qs}` : "/app/listings");
@@ -119,7 +120,10 @@ function MainNav() {
                         {/* Search icon */}
                         <button
                             type="button"
-                            onClick={(e) => { e.preventDefault(); handleSearchSubmit(searchText); }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleSearchSubmit(searchText);
+                            }}
                             className="flex h-full w-10 sm:w-12 md:w-16 lg:w-20 items-center justify-center border-r border-slate-200 border-black flex-shrink-0"
                         >
                             <img
@@ -136,7 +140,7 @@ function MainNav() {
                             ref={inputRef}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
+                                if (e.key === "Enter") {
                                     e.preventDefault();
                                     handleSearchSubmit(searchText);
                                 }
@@ -148,7 +152,10 @@ function MainNav() {
                         {searchText ? (
                             <button
                                 type="button"
-                                onClick={() => { setSearchText(""); inputRef.current?.focus(); }}
+                                onClick={() => {
+                                    setSearchText("");
+                                    inputRef.current?.focus();
+                                }}
                                 aria-label="Clear search"
                                 className="px-3 h-full text-slate-500 hover:text-slate-700"
                             >
@@ -187,25 +194,37 @@ function MainNav() {
                         {showDropdown && (
                             <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-2 z-50">
                                 <button
-                                    onClick={() => { handleSellerDashboard(); setShowDropdown(false); }}
+                                    onClick={() => {
+                                        handleSellerDashboard();
+                                        setShowDropdown(false);
+                                    }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Seller Dashboard
                                 </button>
                                 <button
-                                    onClick={() => { handleOngoingPurchases(); setShowDropdown(false); }}
+                                    onClick={() => {
+                                        handleOngoingPurchases();
+                                        setShowDropdown(false);
+                                    }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Ongoing Purchases
                                 </button>
                                 <button
-                                    onClick={() => { handlePurchaseHistory(); setShowDropdown(false); }}
+                                    onClick={() => {
+                                        handlePurchaseHistory();
+                                        setShowDropdown(false);
+                                    }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Purchase History
                                 </button>
                                 <button
-                                    onClick={() => { handleLogout(); setShowDropdown(false); }}
+                                    onClick={() => {
+                                        handleLogout();
+                                        setShowDropdown(false);
+                                    }}
                                     className="w-full text-left px-4 py-2 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                                 >
                                     Log Out
@@ -243,26 +262,26 @@ function MainNav() {
                                 <span>Notification</span>
                             </button>
                             <button
-                            onClick={() => {
-                                navigate("/app/chat");
-                                setShowMobileMenu(false);
-                            }}
-                            className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
+                                onClick={() => {
+                                    navigate("/app/chat");
+                                    setShowMobileMenu(false);
+                                }}
+                                className="w-full text-left px-4 py-3 text-white hover:bg-blue-700 transition-colors flex items-center gap-3"
                             >
-                            {/* relative wrapper so the badge can be positioned on the icon */}
-                            <span className="relative inline-block">
-                                <img src={chatIcon} alt="" className="h-6 w-6" />
-                                {unreadTotal > 0 && (
-                                <span
-                                    className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
-                                    aria-label={`${unreadTotal} unread`}
-                                >
-                                    {unreadTotal > 99 ? "99+" : unreadTotal}
+                                {/* relative wrapper so the badge can be positioned on the icon */}
+                                <span className="relative inline-block">
+                                    <img src={chatIcon} alt="" className="h-6 w-6" />
+                                    {unreadTotal > 0 && (
+                                        <span
+                                            className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] leading-[18px] text-center"
+                                            aria-label={`${unreadTotal} unread`}
+                                        >
+                                            {unreadTotal > 99 ? "99+" : unreadTotal}
+                                        </span>
+                                    )}
                                 </span>
-                                )}
-                            </span>
 
-                            <span>Chat</span>
+                                <span>Chat</span>
                             </button>
                             <button
                                 onClick={() => {

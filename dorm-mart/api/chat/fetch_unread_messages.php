@@ -20,7 +20,7 @@ $conn->query("SET time_zone = '+00:00'");
 
 session_start(); // read the PHP session cookie to identify the caller
 
-$userId = (int)($_SESSION['user_id'] ?? 0);
+$userId = (int) ($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -39,8 +39,8 @@ if (!$stmt) {
     exit;
 }
 
-$stmt->bind_param('i', $userId); 
-$stmt->execute();                
+$stmt->bind_param('i', $userId);
+$stmt->execute();
 $res = $stmt->get_result();
 if (!$res) {
     http_response_code(500);
@@ -51,10 +51,10 @@ if (!$res) {
 $out = [];
 while ($row = $res->fetch_assoc()) {
     $out[] = [
-        'conv_id' => (int)$row['conv_id'],
-        'unread_count' => (int)$row['unread_count'],
+        'conv_id' => (int) $row['conv_id'],
+        'unread_count' => (int) $row['unread_count'],
         // may be NULL if nothing is unread
-        'first_unread_msg_id' => (int)$row['first_unread_msg_id'],
+        'first_unread_msg_id' => (int) $row['first_unread_msg_id'],
     ];
 }
 
