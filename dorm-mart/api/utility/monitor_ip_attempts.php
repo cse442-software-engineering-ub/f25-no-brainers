@@ -1,66 +1,77 @@
 <?php
 /**
- * User Rate Limiting Monitor
+ * IP Rate Limiting Monitor
  * 
- * This script allows you to monitor user login attempts, decay events, and rate limiting status.
+ * This script allows you to monitor IP login attempts, decay events, and rate limiting status.
  * 
  * USAGE:
- * php api/utility/monitor_user_attempts.php [email]
+ * php api/utility/monitor_ip_attempts.php [ip_address]
  * 
  * Examples:
- * php api/utility/monitor_user_attempts.php sameerja@buffalo.edu
- * php api/utility/monitor_user_attempts.php testuser@buffalo.edu
+ * php api/utility/monitor_ip_attempts.php 192.168.1.1
+ * php api/utility/monitor_ip_attempts.php ::1
  */
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../security/security.php';
 
-// Get email from command line argument
-$email = $argv[1] ?? '';
+// Get IP address from command line argument
+$ipAddress = $argv[1] ?? '';
 
-if (empty($email)) {
-    echo "Usage: php api/utility/monitor_user_attempts.php [email]\n";
-    echo "Example: php api/utility/monitor_user_attempts.php sameerja@buffalo.edu\n";
+if (empty($ipAddress)) {
+    echo "Usage: php api/utility/monitor_ip_attempts.php [ip_address]\n";
+    echo "Example: php api/utility/monitor_ip_attempts.php 192.168.1.1\n";
     exit(1);
 }
 
-// Validate email format
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/@buffalo\.edu$/', $email)) {
-    echo "Error: Email must be a valid @buffalo.edu address\n";
+// Validate IP address format
+if (!filter_var($ipAddress, FILTER_VALIDATE_IP)) {
+    echo "Error: Invalid IP address format\n";
     exit(1);
 }
 
-echo "=== USER RATE LIMITING MONITOR ===\n";
-echo "Email: $email\n";
+echo "=== IP RATE LIMITING MONITOR ===\n";
+echo "IP Address: $ipAddress\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 50) . "\n\n";
 
-// Get current user status
+// Get current IP status
 $conn = db();
-$stmt = $conn->prepare('SELECT user_id, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ?');
-$stmt->bind_param('s', $email);
+$stmt = $conn->prepare('SELECT failed_attempts, last_failed_attempt, lockout_until FROM ip_login_attempts WHERE ip_address = ?');
+
+// If prepare fails (table doesn't exist), show message
+if (!$stmt) {
+    echo "⚠️  IP rate limiting table does not exist. Run migration 012 to create it.\n";
+    $conn->close();
+    exit(1);
+}
+
+$stmt->bind_param('s', $ipAddress);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo "❌ User not found in database\n";
+    echo "✅ No failed attempts recorded for this IP\n";
+    echo "   Status: 🟢 NOT LOCKED OUT\n";
     $stmt->close();
     $conn->close();
-    exit(1);
+    exit(0);
 }
 
 $row = $result->fetch_assoc();
 $stmt->close();
 $conn->close();
 
-$attempts = (int)$row['failed_login_attempts'];
+$attempts = (int)$row['failed_attempts'];
 $lastAttempt = $row['last_failed_attempt'];
-$userId = $row['user_id'];
+$lockoutUntil = $row['lockout_until'];
 
 echo "📊 CURRENT STATUS:\n";
-echo "  User ID: $userId\n";
 echo "  Failed Attempts: $attempts\n";
 echo "  Last Attempt: " . ($lastAttempt ?: 'Never') . "\n";
+if ($lockoutUntil) {
+    echo "  Lockout Until: $lockoutUntil\n";
+}
 
 if ($lastAttempt) {
     $timeSince = time() - strtotime($lastAttempt);
@@ -74,12 +85,14 @@ echo "\n";
 
 // Check rate limiting status
 echo "🔒 RATE LIMITING STATUS:\n";
-$rateLimitCheck = check_rate_limit($email);
+$rateLimitCheck = check_ip_rate_limit($ipAddress);
 if ($rateLimitCheck['blocked']) {
     $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
     echo "  Status: 🔴 LOCKED OUT\n";
     echo "  Remaining Time: $remainingMinutes minutes\n";
-    echo "  Lockout Until: " . $rateLimitCheck['lockout_until'] . "\n";
+    if ($rateLimitCheck['lockout_until']) {
+        echo "  Lockout Until: " . $rateLimitCheck['lockout_until'] . "\n";
+    }
 } else {
     echo "  Status: 🟢 NOT LOCKED OUT\n";
     echo "  Current Attempts: " . $rateLimitCheck['attempts'] . "\n";
@@ -123,13 +136,15 @@ if ($attempts > 0 && $lastAttempt) {
 echo "\n";
 
 // Show lockout expiry
-if ($attempts >= 5 && $lastAttempt) {
-    $lockoutExpiry = strtotime($lastAttempt) + (3 * 60); // 3 minutes
+if ($lockoutUntil) {
+    $lockoutExpiry = strtotime($lockoutUntil);
     $currentTime = time();
     $remainingLockout = $lockoutExpiry - $currentTime;
     
     echo "🚫 LOCKOUT STATUS:\n";
-    echo "  Lockout Started: " . date('Y-m-d H:i:s', strtotime($lastAttempt)) . "\n";
+    if ($lastAttempt) {
+        echo "  Lockout Started: " . date('Y-m-d H:i:s', strtotime($lastAttempt)) . "\n";
+    }
     echo "  Lockout Expires: " . date('Y-m-d H:i:s', $lockoutExpiry) . "\n";
     
     if ($remainingLockout > 0) {
@@ -159,3 +174,4 @@ function formatTime($seconds) {
     }
 }
 ?>
+

@@ -94,20 +94,12 @@ try {
     // Get client IP address for IP-based rate limiting
     $clientIp = get_client_ip();
     
-    // CRITICAL: Check IP rate limiting FIRST, before email check
+    // CRITICAL: Check IP rate limiting BEFORE email check
     // This blocks all attempts from a locked IP regardless of email
+    // IP-based rate limiting prevents email enumeration and account lockout attacks
     $ipRateLimitCheck = check_ip_rate_limit($clientIp);
     if ($ipRateLimitCheck['blocked']) {
         $remainingMinutes = get_remaining_lockout_minutes($ipRateLimitCheck['lockout_until']);
-        http_response_code(429);
-        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
-        exit;
-    }
-    
-    // CRITICAL: Check email rate limiting SECOND, before any password verification
-    $rateLimitCheck = check_rate_limit($email);
-    if ($rateLimitCheck['blocked']) {
-        $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
         http_response_code(429);
         echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
         exit;
@@ -123,7 +115,7 @@ try {
     // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
     // This is the industry-standard defense against SQL injection attacks.
     // ============================================================================
-    $stmt = $conn->prepare('SELECT user_id, hash_pass, failed_login_attempts, last_failed_attempt FROM user_accounts WHERE email = ? LIMIT 1');
+    $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
     $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
     $stmt->execute();
     $res = $stmt->get_result();
@@ -133,9 +125,8 @@ try {
         $conn->close();
         
         // Record failed attempt for non-existent user (but don't reveal this)
-        // Record both IP and email attempts
+        // Record IP attempt only (email-based rate limiting removed to prevent account lockout attacks)
         record_ip_failed_attempt($clientIp);
-        record_failed_attempt($email);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
@@ -150,9 +141,8 @@ try {
     if (!password_verify($password, (string)$row['hash_pass'])) {
         $conn->close();
         
-        // Record failed attempt for both IP and email
+        // Record failed attempt for IP only (email-based rate limiting removed to prevent account lockout attacks)
         record_ip_failed_attempt($clientIp);
-        record_failed_attempt($email);
         
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);

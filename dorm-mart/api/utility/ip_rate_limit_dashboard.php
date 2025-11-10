@@ -1,48 +1,56 @@
 <?php
 /**
- * Rate Limiting Dashboard
+ * IP Rate Limiting Dashboard
  * 
- * This script provides a comprehensive view of all rate limiting activity.
+ * This script provides a comprehensive view of all IP-based rate limiting activity.
  * 
  * USAGE:
- * php api/utility/rate_limit_dashboard.php
+ * php api/utility/ip_rate_limit_dashboard.php
  */
 
 require_once __DIR__ . '/../database/db_connect.php';
 require_once __DIR__ . '/../security/security.php';
 
-echo "=== RATE LIMITING DASHBOARD ===\n";
+echo "=== IP RATE LIMITING DASHBOARD ===\n";
 echo "Time: " . date('Y-m-d H:i:s') . "\n";
 echo str_repeat("=", 80) . "\n\n";
 
-// Get all users with failed attempts
+// Get all IPs with failed attempts
 $conn = db();
 $stmt = $conn->prepare('
-    SELECT email, failed_login_attempts, last_failed_attempt, user_id 
-    FROM user_accounts 
-    WHERE failed_login_attempts > 0 OR last_failed_attempt IS NOT NULL
+    SELECT ip_address, failed_attempts, last_failed_attempt, lockout_until 
+    FROM ip_login_attempts 
+    WHERE failed_attempts > 0 OR last_failed_attempt IS NOT NULL
     ORDER BY last_failed_attempt DESC
 ');
+
+// If prepare fails (table doesn't exist), show message
+if (!$stmt) {
+    echo "⚠️  IP rate limiting table does not exist. Run migration 012 to create it.\n";
+    $conn->close();
+    exit(1);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
-    echo "✅ No users with failed login attempts\n";
+    echo "✅ No IPs with failed login attempts\n";
     $stmt->close();
     $conn->close();
     exit(0);
 }
 
-echo "📊 USERS WITH FAILED ATTEMPTS:\n";
+echo "📊 IPs WITH FAILED ATTEMPTS:\n";
 echo str_repeat("-", 80) . "\n";
 
 while ($row = $result->fetch_assoc()) {
-    $email = $row['email'];
-    $attempts = (int)$row['failed_login_attempts'];
+    $ipAddress = $row['ip_address'];
+    $attempts = (int)$row['failed_attempts'];
     $lastAttempt = $row['last_failed_attempt'];
-    $userId = $row['user_id'];
+    $lockoutUntil = $row['lockout_until'];
     
-    echo "👤 User: $email (ID: $userId)\n";
+    echo "🌐 IP: $ipAddress\n";
     echo "   Attempts: $attempts\n";
     echo "   Last Attempt: " . ($lastAttempt ?: 'Never') . "\n";
     
@@ -55,10 +63,13 @@ while ($row = $result->fetch_assoc()) {
     }
     
     // Check rate limiting status
-    $rateLimitCheck = check_rate_limit($email);
+    $rateLimitCheck = check_ip_rate_limit($ipAddress);
     if ($rateLimitCheck['blocked']) {
         $remainingMinutes = get_remaining_lockout_minutes($rateLimitCheck['lockout_until']);
         echo "   Status: 🔴 LOCKED OUT ($remainingMinutes minutes remaining)\n";
+        if ($lockoutUntil) {
+            echo "   Lockout Until: $lockoutUntil\n";
+        }
     } else {
         echo "   Status: 🟢 NOT LOCKED OUT\n";
     }
@@ -69,31 +80,10 @@ while ($row = $result->fetch_assoc()) {
 $stmt->close();
 $conn->close();
 
-// Show recent log entries if available
-$logFile = __DIR__ . '/attempts.log';
-if (file_exists($logFile)) {
-    echo "📝 RECENT ACTIVITY:\n";
-    echo str_repeat("-", 80) . "\n";
-    
-    $logContent = file_get_contents($logFile);
-    $logLines = explode("\n", $logContent);
-    $logLines = array_filter($logLines);
-    $recentLines = array_slice($logLines, -10);
-    
-    foreach ($recentLines as $line) {
-        if (trim($line)) {
-            echo $line . "\n";
-        }
-    }
-    
-    echo "\n";
-}
-
 echo "💡 COMMANDS:\n";
-echo "  php api/utility/monitor_user_attempts.php [email]  - Monitor specific user\n";
-echo "  php api/utility/attempt_logger.php view           - View all logs\n";
-echo "  php api/utility/reset_user_account_lockouts.php   - Reset all lockouts\n";
-echo "  php api/utility/rate_limit_dashboard.php          - Show this dashboard\n";
+echo "  php api/utility/monitor_ip_attempts.php [ip_address]  - Monitor specific IP\n";
+echo "  php api/utility/reset_ip_lockouts.php                 - Reset all IP lockouts\n";
+echo "  php api/utility/ip_rate_limit_dashboard.php           - Show this dashboard\n";
 
 /**
  * Format seconds into human-readable time
@@ -112,3 +102,4 @@ function formatTime($seconds) {
     }
 }
 ?>
+
