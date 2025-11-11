@@ -47,16 +47,16 @@ function sendEmail(string $toEmail, string $toName, string $subject, string $htm
     }
 
     $mail = new PHPMailer(true);
-    
+
     try {
         // SMTP Configuration with performance optimizations
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = getenv('GMAIL_USERNAME');
-        $mail->Password   = getenv('GMAIL_PASSWORD');
+        $mail->Host = 'smtp.gmail.com';
+        $mail->SMTPAuth = true;
+        $mail->Username = getenv('GMAIL_USERNAME');
+        $mail->Password = getenv('GMAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port       = 465;
+        $mail->Port = 465;
 
         // Performance optimizations
         $mail->Timeout = 15; // Reduced timeout for faster failure detection
@@ -71,14 +71,14 @@ function sendEmail(string $toEmail, string $toName, string $subject, string $htm
         ];
 
         // Tell PHPMailer we are sending UTF-8 and how to encode it
-        $mail->CharSet   = 'UTF-8';
-        $mail->Encoding  = 'base64';
+        $mail->CharSet = 'UTF-8';
+        $mail->Encoding = 'base64';
 
         // From/To addresses
         $mail->setFrom(getenv('GMAIL_USERNAME'), 'Dorm Mart');
         $mail->addReplyTo(getenv('GMAIL_USERNAME'), 'Dorm Mart Support');
         $mail->addAddress($toEmail, $toName);
-        
+
         // Set email content
         $mail->isHTML(true);
         $mail->Subject = $subject;
@@ -90,10 +90,10 @@ function sendEmail(string $toEmail, string $toName, string $subject, string $htm
         $mail->send();
         $sendEndTime = microtime(true);
         $sendDuration = round(($sendEndTime - $sendStartTime) * 1000, 2);
-        
+
         // Log performance
         error_log("PHPMailer send() duration: {$sendDuration}ms");
-        
+
         return ['success' => true, 'message' => 'Email sent successfully'];
     } catch (Exception $e) {
         return ['success' => false, 'error' => 'Failed to send email: ' . $e->getMessage()];

@@ -111,8 +111,8 @@ try {
 
         // seller name
         $seller = 'Unknown Seller';
-        $first = trim((string)($row['first_name'] ?? ''));
-        $last  = trim((string)($row['last_name'] ?? ''));
+        $first = trim((string) ($row['first_name'] ?? ''));
+        $last = trim((string) ($row['last_name'] ?? ''));
         if ($first !== '' || $last !== '') {
             $seller = trim($first . ' ' . $last);
         } elseif (!empty($row['email'])) {
@@ -122,22 +122,22 @@ try {
         // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
         // No need to manually escape - json_encode handles it safely
         $out[] = [
-            'id'         => (int)$row['product_id'],
-            'title'      => $row['title'] ?? 'Untitled',
-            'price'      => $row['listing_price'] !== null ? (float)$row['listing_price'] : 0,
-            'image'      => $image,      // <-- "/data/images/xxxx.png"
-            'image_url'  => $image,
-            'tags'       => $tags,
-            'category'   => !empty($tags) ? $tags[0] : null,
-            'location'   => $row['item_location'] ?? 'North Campus',
-            'condition'  => $row['item_condition'] ?? null,
+            'id' => (int) $row['product_id'],
+            'title' => $row['title'] ?? 'Untitled',
+            'price' => $row['listing_price'] !== null ? (float) $row['listing_price'] : 0,
+            'image' => $image,      // <-- "/data/images/xxxx.png"
+            'image_url' => $image,
+            'tags' => $tags,
+            'category' => !empty($tags) ? $tags[0] : null,
+            'location' => $row['item_location'] ?? 'North Campus',
+            'condition' => $row['item_condition'] ?? null,
             'created_at' => $createdAt,
-            'seller'     => $seller,
-            'sold_by'    => $seller,
-            'rating'     => 4.7,
-            'status'     => $status,
-            'trades'     => (bool)$row['trades'],
-            'price_nego' => (bool)$row['price_nego'],
+            'seller' => $seller,
+            'sold_by' => $seller,
+            'rating' => 4.7,
+            'status' => $status,
+            'trades' => (bool) $row['trades'],
+            'price_nego' => (bool) $row['price_nego'],
         ];
     }
 

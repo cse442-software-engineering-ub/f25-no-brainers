@@ -26,7 +26,8 @@ require_once __DIR__ . '/../utility/email_sender.php';
 
 function generatePassword(int $length = 12): string
 {
-    if ($length < 8) $length = 8;
+    if ($length < 8)
+        $length = 8;
 
     $uppers = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lowers = 'abcdefghijklmnopqrstuvwxyz';
@@ -110,7 +111,7 @@ TEXT;
 
     // Use shared email utility (optimized SMTP settings, connection reuse)
     $result = sendEmail($user['email'], $toName, $subject, $html, $text);
-    
+
     // Preserve original return format ['ok' => bool, 'error' => string|null]
     if ($result['success']) {
         return ['ok' => true, 'error' => null];
@@ -199,7 +200,7 @@ TEXT;
 
     // Use shared email utility (optimized SMTP settings, connection reuse)
     $result = sendEmail($user['email'], $toName, $subject, $html, $text);
-    
+
     // Preserve original return format ['ok' => bool, 'error' => string|null]
     if ($result['success']) {
         return ['ok' => true, 'error' => null];
@@ -258,9 +259,9 @@ if (containsXSSPattern($firstNameRaw) || containsXSSPattern($lastNameRaw)) {
 $firstName = validateInput($firstNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $lastName = validateInput($lastNameRaw, 100, '/^[a-zA-Z\s\-\']+$/');
 $gradMonth = sanitize_number($data['gradMonth'] ?? 0, 1, 12);
-$gradYear  = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
+$gradYear = sanitize_number($data['gradYear'] ?? 0, 1900, 2030);
 $email = validateInput($emailRaw, 255, '/^[^@\s]+@buffalo\.edu$/');
-$promos    = !empty($data['promos']);
+$promos = !empty($data['promos']);
 
 if ($firstName === false || $lastName === false || $email === false) {
     http_response_code(400);
@@ -288,8 +289,8 @@ if ($gradMonth < 1 || $gradMonth > 12 || $gradYear < 1900) {
 }
 
 // --- Current and limit dates ---
-$currentYear  = (int)date('Y');
-$currentMonth = (int)date('n');
+$currentYear = (int) date('Y');
+$currentMonth = (int) date('n');
 $maxFutureYear = $currentYear + 8;
 
 // --- Check for past date ---
@@ -334,7 +335,7 @@ try {
     // generates a unique SALT and embeds it into the returned hash (bcrypt here).
     // The database only stores this salted, one-way hash (column: hash_pass).
     $tempPassword = generatePassword(12);
-    $hashPass     = password_hash($tempPassword, PASSWORD_BCRYPT);
+    $hashPass = password_hash($tempPassword, PASSWORD_BCRYPT);
 
     // 3) Insert user
     // ============================================================================

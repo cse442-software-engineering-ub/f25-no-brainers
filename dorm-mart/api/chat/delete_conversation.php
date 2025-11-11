@@ -36,7 +36,7 @@ try {
         exit;
     }
 
-    $convId = isset($payload['conv_id']) ? (int)$payload['conv_id'] : 0;
+    $convId = isset($payload['conv_id']) ? (int) $payload['conv_id'] : 0;
     if ($convId <= 0) {
         http_response_code(400);
         echo json_encode(['success' => false, 'error' => 'Invalid conversation ID']);
@@ -60,8 +60,8 @@ try {
         exit;
     }
 
-    $user1Id = (int)$convRow['user1_id'];
-    $user2Id = (int)$convRow['user2_id'];
+    $user1Id = (int) $convRow['user1_id'];
+    $user2Id = (int) $convRow['user2_id'];
     $isUser1 = $userId === $user1Id;
     $isUser2 = $userId === $user2Id;
 
@@ -72,7 +72,7 @@ try {
     }
 
     // Check if already deleted by this user
-    if (($isUser1 && (int)$convRow['user1_deleted'] === 1) || ($isUser2 && (int)$convRow['user2_deleted'] === 1)) {
+    if (($isUser1 && (int) $convRow['user1_deleted'] === 1) || ($isUser2 && (int) $convRow['user2_deleted'] === 1)) {
         http_response_code(409);
         echo json_encode(['success' => false, 'error' => 'Conversation already deleted']);
         exit;
@@ -85,7 +85,7 @@ try {
     $countRes = $countStmt->get_result();
     $countRow = $countRes ? $countRes->fetch_assoc() : null;
     $countStmt->close();
-    $scheduledPurchaseCount = $countRow ? (int)$countRow['cnt'] : 0;
+    $scheduledPurchaseCount = $countRow ? (int) $countRow['cnt'] : 0;
 
     // Get scheduled purchases to update item status BEFORE deleting
     $scheduledStmt = $conn->prepare('SELECT request_id, inventory_product_id, status FROM scheduled_purchase_requests WHERE conversation_id = ?');
@@ -95,11 +95,11 @@ try {
     $scheduledPurchases = [];
     $requestIds = [];
     while ($row = $scheduledRes->fetch_assoc()) {
-        $requestId = (int)$row['request_id'];
+        $requestId = (int) $row['request_id'];
         $scheduledPurchases[] = [
             'request_id' => $requestId,
-            'inventory_product_id' => (int)$row['inventory_product_id'],
-            'status' => (string)$row['status'],
+            'inventory_product_id' => (int) $row['inventory_product_id'],
+            'status' => (string) $row['status'],
         ];
         $requestIds[] = $requestId;
     }
@@ -123,7 +123,7 @@ try {
             $checkOtherRow = $checkOtherRes ? $checkOtherRes->fetch_assoc() : null;
             $checkOtherStmt->close();
 
-            $hasOtherAccepted = $checkOtherRow && (int)$checkOtherRow['cnt'] > 0;
+            $hasOtherAccepted = $checkOtherRow && (int) $checkOtherRow['cnt'] > 0;
 
             // Only set back to Active if no other accepted scheduled purchases exist
             if (!$hasOtherAccepted) {
@@ -163,7 +163,7 @@ try {
         'message' => 'Conversation deleted successfully',
         'deleted_scheduled_purchases' => $scheduledPurchaseCount,
     ]);
-    
+
     $conn->close();
 } catch (Throwable $e) {
     error_log('delete_conversation error: ' . $e->getMessage());

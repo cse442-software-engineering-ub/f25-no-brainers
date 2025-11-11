@@ -14,8 +14,8 @@ require_once __DIR__ . '/utility/email_sender.php';
 
 // Handle CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
+  http_response_code(204);
+  exit;
 }
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -40,23 +40,23 @@ function getPrefs(mysqli $conn, int $userId)
   $res = $stmt->get_result();
   $userRow = $res->fetch_assoc();
   $stmt->close();
-  
-  
+
+
   $theme = 'light'; // default
   if ($userRow && array_key_exists('theme', $userRow) && $userRow['theme'] !== null) {
     $theme = $userRow['theme'] ? 'dark' : 'light';
   }
-  
+
   $promoEmails = false; // default
   if ($userRow && isset($userRow['promotional'])) {
-    $promoEmails = (bool)$userRow['promotional'];
+    $promoEmails = (bool) $userRow['promotional'];
   }
-  
+
   $revealContact = false; // default
   if ($userRow && isset($userRow['reveal_contact_info'])) {
-    $revealContact = (bool)$userRow['reveal_contact_info'];
+    $revealContact = (bool) $userRow['reveal_contact_info'];
   }
-  
+
   // Build interests array from the 3 category columns
   $interests = [];
   if ($userRow) {
@@ -66,25 +66,25 @@ function getPrefs(mysqli $conn, int $userId)
       $userRow['interested_category_3'] ?? null
     ]);
   }
-  
+
   $result = [
     'promoEmails' => $promoEmails,
     'revealContact' => $revealContact,
     'interests' => $interests,
     'theme' => $theme,
   ];
-  
+
   return $result;
 }
 
 function sendPromoWelcomeEmail(array $user): array
 {
-    $first = $user['firstName'] ?: 'Student';
-    $subject = 'Welcome to Dorm Mart Promotional Updates';
-    $toName = trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? ''));
+  $first = $user['firstName'] ?: 'Student';
+  $subject = 'Welcome to Dorm Mart Promotional Updates';
+  $toName = trim(($user['firstName'] ?? '') . ' ' . ($user['lastName'] ?? ''));
 
-    // Exact same email template as before (preserved for compatibility)
-    $html = <<<HTML
+  // Exact same email template as before (preserved for compatibility)
+  $html = <<<HTML
 <!doctype html>
 <html>
   <head>
@@ -132,8 +132,8 @@ function sendPromoWelcomeEmail(array $user): array
 </html>
 HTML;
 
-    // Plain-text version (exact same as before)
-    $text = <<<TEXT
+  // Plain-text version (exact same as before)
+  $text = <<<TEXT
 Promotional Updates - Dorm Mart
 
 Dear {$first},
@@ -155,15 +155,15 @@ The Dorm Mart Team
 (This is an automated message; do not reply. Support: dormmartsupport@gmail.com)
 TEXT;
 
-    // Use shared email utility (optimized SMTP settings, connection reuse)
-    $result = sendEmail($user['email'], $toName, $subject, $html, $text);
-    
-    // Preserve original return format ['ok' => bool, 'error' => string|null]
-    if ($result['success']) {
-        return ['ok' => true, 'error' => null];
-    } else {
-        return ['ok' => false, 'error' => $result['error'] ?? 'Failed to send email'];
-    }
+  // Use shared email utility (optimized SMTP settings, connection reuse)
+  $result = sendEmail($user['email'], $toName, $subject, $html, $text);
+
+  // Preserve original return format ['ok' => bool, 'error' => string|null]
+  if ($result['success']) {
+    return ['ok' => true, 'error' => null];
+  } else {
+    return ['ok' => false, 'error' => $result['error'] ?? 'Failed to send email'];
+  }
 }
 
 try {
@@ -177,21 +177,22 @@ try {
   if ($method === 'POST') {
     $raw = file_get_contents('php://input');
     $body = json_decode($raw, true);
-    if (!is_array($body)) $body = [];
+    if (!is_array($body))
+      $body = [];
 
     /* Conditional CSRF validation - only validate if token is provided */
     $token = $body['csrf_token'] ?? null;
     if ($token !== null && !validate_csrf_token($token)) {
-        http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
-        exit;
+      http_response_code(403);
+      echo json_encode(['ok' => false, 'error' => 'CSRF token validation failed']);
+      exit;
     }
 
-    $promo = isset($body['promoEmails']) ? (int)!!$body['promoEmails'] : 0;
-    $reveal = isset($body['revealContact']) ? (int)!!$body['revealContact'] : 0;
+    $promo = isset($body['promoEmails']) ? (int) !!$body['promoEmails'] : 0;
+    $reveal = isset($body['revealContact']) ? (int) !!$body['revealContact'] : 0;
     $interests = isset($body['interests']) && is_array($body['interests']) ? array_slice($body['interests'], 0, 3) : [];
     $theme = (isset($body['theme']) && $body['theme'] === 'dark') ? 1 : 0;
-    
+
     // Prepare the 3 category values
     $int1 = $interests[0] ?? null;
     $int2 = $interests[1] ?? null;
@@ -207,7 +208,7 @@ try {
       $res = $stmt->get_result();
       $userRow = $res->fetch_assoc();
       $stmt->close();
-      
+
       // Debug logging
       if ($userRow && !$userRow['received_intro_promo_email']) {
         $shouldSendEmail = true;
@@ -246,14 +247,14 @@ try {
       $res = $stmt->get_result();
       $userDetails = $res->fetch_assoc();
       $stmt->close();
-      
+
       if ($userDetails) {
         $emailResult = sendPromoWelcomeEmail([
           'firstName' => $userDetails['first_name'],
           'lastName' => $userDetails['last_name'],
           'email' => $userDetails['email']
         ]);
-        
+
         if (!$emailResult['ok']) {
           error_log("Failed to send promo welcome email: " . $emailResult['error']);
         }
@@ -272,6 +273,7 @@ try {
 } catch (Throwable $e) {
   http_response_code(500);
   echo json_encode(['ok' => false, 'error' => 'Server error']);
-  if (isset($conn)) $conn->close();
+  if (isset($conn))
+    $conn->close();
   exit;
 }

@@ -13,7 +13,10 @@ const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 function RequirementRow({ ok, text }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
+      <span
+        className="inline-flex h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }}
+      />
       <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
     </div>
   );
@@ -22,7 +25,10 @@ function RequirementRow({ ok, text }) {
 function Field({ id, label, type = "password", value, onChange, placeholder }) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-base font-medium text-slate-700">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-base font-medium text-slate-700"
+      >
         {label}
       </label>
       <input
@@ -71,7 +77,8 @@ function ChangePasswordPage() {
 
   const enforceMax = (setter) => (e) => {
     const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
+    if (v.length > MAX_LEN)
+      alert("Entered password is too long. Maximum length is 64 characters.");
     setter(v);
   };
 
@@ -119,10 +126,16 @@ function ChangePasswordPage() {
       return;
     }
     if (nextPw !== confirmPw) {
-      alert("The new password that was entered is different from the re-entry of the password.");
+      alert(
+        "The new password that was entered is different from the re-entry of the password."
+      );
       return;
     }
-    if (current.length > MAX_LEN || nextPw.length > MAX_LEN || confirmPw.length > MAX_LEN) {
+    if (
+      current.length > MAX_LEN ||
+      nextPw.length > MAX_LEN ||
+      confirmPw.length > MAX_LEN
+    ) {
       alert("Entered password is too long. Maximum length is 64 characters.");
       return;
     }
@@ -169,7 +182,10 @@ function ChangePasswordPage() {
   return (
     <SettingsLayout>
       <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+        <h1
+          className="text-2xl font-serif font-semibold"
+          style={{ color: NAV_BLUE }}
+        >
           Change Password
         </h1>
         <button
@@ -218,16 +234,31 @@ function ChangePasswordPage() {
         </section>
 
         <section className="rounded-lg border border-slate-200 p-4">
-          <h2 className="mb-3 text-lg font-serif font-semibold" style={{ color: NAV_BLUE }}>
+          <h2
+            className="mb-3 text-lg font-serif font-semibold"
+            style={{ color: NAV_BLUE }}
+          >
             Password must contain:
           </h2>
           <div className="flex flex-col gap-2">
-            <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-            <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
+            <RequirementRow
+              ok={policy.lower}
+              text="At least 1 lowercase character"
+            />
+            <RequirementRow
+              ok={policy.upper}
+              text="At least 1 uppercase character"
+            />
             <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-            <RequirementRow ok={policy.special} text="At least 1 special character" />
+            <RequirementRow
+              ok={policy.special}
+              text="At least 1 special character"
+            />
             <RequirementRow ok={policy.digit} text="At least 1 digit" />
-            <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+            <RequirementRow
+              ok={policy.notTooLong}
+              text="No more than 64 characters"
+            />
           </div>
         </section>
       </div>
@@ -243,7 +274,9 @@ function ChangePasswordPage() {
             style={{ backgroundColor: "#3d3eb5" }}
           >
             <div className="p-6">
-              <h3 className="text-2xl font-serif text-white mb-3 text-center">Password Changed</h3>
+              <h3 className="text-2xl font-serif text-white mb-3 text-center">
+                Password Changed
+              </h3>
               <p className="text-white/90 text-center leading-relaxed">
                 Your password was changed successfully.
                 <br />

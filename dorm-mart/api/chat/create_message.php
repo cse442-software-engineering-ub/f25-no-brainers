@@ -34,9 +34,9 @@ if ($token !== null && !validate_csrf_token($token)) {
     exit;
 }
 
-$receiver = isset($body['receiver_id']) ? trim((string)$body['receiver_id']) : '';
-$contentRaw  = isset($body['content'])     ? trim((string)$body['content'])     : '';
-$convIdParam = isset($body['conv_id']) ? (int)$body['conv_id'] : null;
+$receiver = isset($body['receiver_id']) ? trim((string) $body['receiver_id']) : '';
+$contentRaw = isset($body['content']) ? trim((string) $body['content']) : '';
+$convIdParam = isset($body['conv_id']) ? (int) $body['conv_id'] : null;
 
 if ($sender === '' || $receiver === '' || $contentRaw === '') {
     http_response_code(400);
@@ -59,21 +59,21 @@ if ($len > 500) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error'   => 'content_too_long',
-        'max'     => 500,
-        'length'  => $len
+        'error' => 'content_too_long',
+        'max' => 500,
+        'length' => $len
     ]);
     exit;
 }
 
-$senderId   = (int)$sender;
-$receiverId = (int)$receiver;
+$senderId = (int) $sender;
+$receiverId = (int) $receiver;
 $u1 = min($senderId, $receiverId);
 $u2 = max($senderId, $receiverId);
 $lockKey = "conv:$u1:$u2"; // used for advisory lock
 
 $convId = null;
-$msgId  = null;
+$msgId = null;
 /* will hold ISO-8601 UTC string, e.g., 2025-10-31T03:05:06Z */
 $createdIso = null; // <-- will be filled after insert
 
@@ -86,7 +86,7 @@ try {
     $stmt->execute();
     $res = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    if (!$res || (int)$res['got_lock'] !== 1) {
+    if (!$res || (int) $res['got_lock'] !== 1) {
         throw new RuntimeException('Busy. Try again.');
     }
 
@@ -101,22 +101,22 @@ try {
     $result = $stmt->get_result();
 
     // Fallbacks if anything is missing
-    $senderName   = 'User ' . $senderId;
+    $senderName = 'User ' . $senderId;
     $receiverName = 'User ' . $receiverId;
 
     while ($row = $result->fetch_assoc()) {
         // Build "First Last"; trim handles missing last names cleanly
         $full = trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''));
-        if ((int)$row['user_id'] === $senderId) {
+        if ((int) $row['user_id'] === $senderId) {
             $senderName = $full !== '' ? $full : $senderName;
-        } elseif ((int)$row['user_id'] === $receiverId) {
+        } elseif ((int) $row['user_id'] === $receiverId) {
             $receiverName = $full !== '' ? $full : $receiverName;
         }
     }
     $stmt->close();
     // Map names to the ordered pair (u1/u2) required by conversations table
-    $u1Name = ($u1 === $senderId) ? $senderName  : $receiverName;
-    $u2Name = ($u2 === $senderId) ? $senderName  : $receiverName;
+    $u1Name = ($u1 === $senderId) ? $senderName : $receiverName;
+    $u2Name = ($u2 === $senderId) ? $senderName : $receiverName;
     // -------- end name lookup --------
 
     // If conv_id is provided, validate it belongs to this user pair
@@ -126,10 +126,10 @@ try {
         $stmt->execute();
         $stmt->bind_result($convIdFound);
         if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
+            $convId = (int) $convIdFound;
         }
         $stmt->close();
-        
+
         if ($convId === null) {
             // Invalid conv_id - doesn't belong to this user pair
             // Release lock before exiting
@@ -151,7 +151,7 @@ try {
         $stmt->execute();
         $stmt->bind_result($convIdFound);
         if ($stmt->fetch()) {
-            $convId = (int)$convIdFound;
+            $convId = (int) $convIdFound;
         }
         $stmt->close();
     }
@@ -206,7 +206,7 @@ try {
     $stmt->execute();
     $row = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    $createdIso = $row ? (string)$row['created_at'] : null; // fallback handled below if null
+    $createdIso = $row ? (string) $row['created_at'] : null; // fallback handled below if null
 
     // Update receiver's unread counters
     $stmt = $conn->prepare(
@@ -236,13 +236,13 @@ try {
     }
 
     echo json_encode([
-        'success'     => true,
-        'conv_id'     => $convId,
-        'message_id'  => $msgId,
+        'success' => true,
+        'conv_id' => $convId,
+        'message_id' => $msgId,
         // Return the fields you asked for as a single object for the client
-        'message'     => [
+        'message' => [
             'message_id' => $msgId,
-            'content'    => $content,
+            'content' => $content,
             'created_at' => $createdIso, // ISO-8601 UTC, e.g., 2025-10-31T03:05:06Z
         ],
     ], JSON_UNESCAPED_SLASHES);

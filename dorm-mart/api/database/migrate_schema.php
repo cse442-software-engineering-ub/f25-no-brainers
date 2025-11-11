@@ -17,10 +17,11 @@ $conn->query("
 // reads applied filenames and stores them in a hash map
 $applied = [];
 $res = $conn->query("SELECT filename FROM schema_migrations");
-while ($row = $res->fetch_assoc()) $applied[$row['filename']] = true;
+while ($row = $res->fetch_assoc())
+  $applied[$row['filename']] = true;
 
 // collect migration files and order them
-$dir = dirname(__DIR__,2) . '/migrations';
+$dir = dirname(__DIR__, 2) . '/migrations';
 $files = glob($dir . '/*.sql');
 natsort($files);
 
@@ -29,7 +30,8 @@ $ran = [];
 foreach ($files as $path) {
   $name = basename($path);
   // skip already applied to avoid re-running the same migration
-  if (isset($applied[$name])) continue;
+  if (isset($applied[$name]))
+    continue;
   // read sql file contents
   $sql = file_get_contents($path);
   // starts a db transaction to ensure atomicity

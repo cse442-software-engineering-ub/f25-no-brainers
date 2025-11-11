@@ -11,8 +11,15 @@ setSecureCORS();
 header('Content-Type: application/json; charset=utf-8');
 
 // Handle CORS preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
-if ($_SERVER['REQUEST_METHOD'] !== 'GET') { http_response_code(405); echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']); exit; }
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    http_response_code(405);
+    echo json_encode(['ok' => false, 'error' => 'Method Not Allowed']);
+    exit;
+}
 
 try {
     require __DIR__ . '/auth/auth_handle.php';
@@ -22,14 +29,14 @@ try {
     $userId = require_login();
 
     // Accept product_id from query (supports `id` or `product_id`)
-    $prodStr = isset($_GET['product_id']) ? (string)$_GET['product_id'] : (isset($_GET['id']) ? (string)$_GET['id'] : '');
+    $prodStr = isset($_GET['product_id']) ? (string) $_GET['product_id'] : (isset($_GET['id']) ? (string) $_GET['id'] : '');
     $prodStr = trim($prodStr);
     if ($prodStr === '' || !ctype_digit($prodStr)) {
         http_response_code(400);
         echo json_encode(['ok' => false, 'error' => 'Invalid or missing product_id']);
         exit;
     }
-    $productId = (int)$prodStr;
+    $productId = (int) $prodStr;
 
     mysqli_report(MYSQLI_REPORT_OFF);
     $mysqli = db();
@@ -109,42 +116,42 @@ try {
 
     // Build seller display name
     $seller = 'Unknown Seller';
-    $first = trim((string)($row['first_name'] ?? ''));
-    $last  = trim((string)($row['last_name'] ?? ''));
+    $first = trim((string) ($row['first_name'] ?? ''));
+    $last = trim((string) ($row['last_name'] ?? ''));
     if ($first !== '' || $last !== '') {
         $seller = trim($first . ' ' . $last);
     } elseif (!empty($row['email'])) {
-        $seller = (string)$row['email'];
+        $seller = (string) $row['email'];
     }
 
     $out = [
         // core
-        'product_id'    => (int)$row['product_id'],
-        'title'         => (string)($row['title'] ?? 'Untitled'),
-        'description'   => $row['description'] ?? null,
-        'listing_price' => $row['listing_price'] !== null ? (float)$row['listing_price'] : null,
+        'product_id' => (int) $row['product_id'],
+        'title' => (string) ($row['title'] ?? 'Untitled'),
+        'description' => $row['description'] ?? null,
+        'listing_price' => $row['listing_price'] !== null ? (float) $row['listing_price'] : null,
 
         // normalized fields expected by frontend
-        'tags'          => $tags,                 // derived from categories
-        'categories'    => $row['categories'] ?? null, // raw JSON string for compatibility
+        'tags' => $tags,                 // derived from categories
+        'categories' => $row['categories'] ?? null, // raw JSON string for compatibility
         'item_location' => $row['item_location'] ?? null,
-        'item_condition'=> $row['item_condition'] ?? null,
-        'photos'        => $photos,               // array of paths/urls
-        'trades'        => (bool)$row['trades'],
-        'price_nego'    => (bool)$row['price_nego'],
-        'date_listed'   => $row['date_listed'] ?? null,
-        'seller_id'     => isset($row['seller_id']) ? (int)$row['seller_id'] : null,
-        'sold'          => (bool)$row['sold'],
-        'final_price'   => $row['final_price'] !== null ? (float)$row['final_price'] : null,
-        'date_sold'     => $row['date_sold'] ?? null,
-        'sold_to'       => isset($row['sold_to']) ? (int)$row['sold_to'] : null,
+        'item_condition' => $row['item_condition'] ?? null,
+        'photos' => $photos,               // array of paths/urls
+        'trades' => (bool) $row['trades'],
+        'price_nego' => (bool) $row['price_nego'],
+        'date_listed' => $row['date_listed'] ?? null,
+        'seller_id' => isset($row['seller_id']) ? (int) $row['seller_id'] : null,
+        'sold' => (bool) $row['sold'],
+        'final_price' => $row['final_price'] !== null ? (float) $row['final_price'] : null,
+        'date_sold' => $row['date_sold'] ?? null,
+        'sold_to' => isset($row['sold_to']) ? (int) $row['sold_to'] : null,
 
         // seller display helpers
-        'seller'        => $seller,
-        'email'         => $row['email'] ?? null,
+        'seller' => $seller,
+        'email' => $row['email'] ?? null,
 
         // convenience timestamp-like field
-        'created_at'    => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
+        'created_at' => !empty($row['date_listed']) ? ($row['date_listed'] . ' 00:00:00') : null,
     ];
 
     echo json_encode($out, JSON_UNESCAPED_SLASHES);

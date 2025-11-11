@@ -18,7 +18,6 @@
   }
 }
 
-
 @tailwind components;
 @tailwind utilities;
 
@@ -28,7 +27,9 @@
   }
 }
 
-html, body, #root {
+html,
+body,
+#root {
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto; /* allow vertical scrolling */
@@ -36,19 +37,25 @@ html, body, #root {
 }
 
 /* Dark mode base styles */
-html.dark, html.dark body, html.dark #root {
+html.dark,
+html.dark body,
+html.dark #root {
   background-color: #111827; /* gray-900 */
   color: #f3f4f6; /* gray-100 */
 }
 
 /* Ensure input fields are always visible */
-input, textarea, select {
+input,
+textarea,
+select {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
 }
 
-html.dark input, html.dark textarea, html.dark select {
+html.dark input,
+html.dark textarea,
+html.dark select {
   background-color: white !important;
   color: #1f2937 !important; /* gray-800 */
   border-color: #d1d5db !important; /* gray-300 */
@@ -90,32 +97,67 @@ html.dark input, html.dark textarea, html.dark select {
 
 /* --- animations (unchanged) --- */
 @keyframes image-glow {
-  0% { opacity: 0; animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1); }
-  10% { opacity: 0.7; animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99); }
-  to  { opacity: 0.4; }
+  0% {
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1);
+  }
+  10% {
+    opacity: 0.7;
+    animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99);
+  }
+  to {
+    opacity: 0.4;
+  }
 }
 
 @keyframes fade-in {
-  0% { opacity: 0; transform: translateY(-10px); }
-  to  { opacity: 1; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes fade-up {
-  0% { opacity: 0; transform: translateY(20px); }
-  to  { opacity: 1; transform: none; }
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes shimmer {
-  0%, 90%, to { background-position: calc(-100% - var(--shimmer-width)) 0; }
-  30%, 60%    { background-position: calc(100% + var(--shimmer-width)) 0; }
+  0%,
+  90%,
+  to {
+    background-position: calc(-100% - var(--shimmer-width)) 0;
+  }
+  30%,
+  60% {
+    background-position: calc(100% + var(--shimmer-width)) 0;
+  }
 }
 
 @keyframes marquee {
-  0% { transform: translate(0); }
-  to { transform: translateX(calc(-100% - var(--gap))); }
+  0% {
+    transform: translate(0);
+  }
+  to {
+    transform: translateX(calc(-100% - var(--gap)));
+  }
 }
 
 @keyframes marquee-vertical {
-  0% { transform: translateY(0); }
-  to { transform: translateY(calc(-100% - var(--gap))); }
+  0% {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% - var(--gap)));
+  }
 }

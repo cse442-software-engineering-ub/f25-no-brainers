@@ -16,15 +16,28 @@ function SettingsLayout({ children }) {
 
   return (
     // Fill viewport height minus the nav (≈64px). Use *height* + child h-full.
-    <div className="w-full flex flex-col bg-gray-50 dark:bg-gray-900" style={{ height: "calc(100vh - 64px)" }}>
+    <div
+      className="w-full flex flex-col bg-gray-50 dark:bg-gray-900"
+      style={{ height: "calc(100vh - 64px)" }}
+    >
       {/* Mobile hamburger menu button - only visible on mobile */}
       <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
         <button
           onClick={() => setShowMobileMenu(!showMobileMenu)}
           className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 6h16M4 12h16M4 18h16"
+            />
           </svg>
           <span className="text-lg font-medium">Settings</span>
         </button>
@@ -40,7 +53,10 @@ function SettingsLayout({ children }) {
           <div className="px-4 py-3">
             <h2 className="text-xl font-serif font-semibold">Settings</h2>
           </div>
-          <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+          <div
+            className="h-px w-full"
+            style={{ background: "rgba(255,255,255,0.25)" }}
+          />
           <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
             {links.map((l) => (
               <NavLink
@@ -56,7 +72,9 @@ function SettingsLayout({ children }) {
                 }
                 style={({ isActive }) => ({
                   color: "#ffffff",
-                  ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
+                  ...(isActive
+                    ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" }
+                    : {}),
                 })}
               >
                 {l.label}
@@ -85,12 +103,25 @@ function SettingsLayout({ children }) {
                   onClick={() => setShowMobileMenu(false)}
                   className="text-white hover:text-gray-300"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
-              <div className="h-px w-full" style={{ background: "rgba(255,255,255,0.25)" }} />
+              <div
+                className="h-px w-full"
+                style={{ background: "rgba(255,255,255,0.25)" }}
+              />
               <nav className="flex h-[calc(100%-56px-1px)] flex-col gap-1 overflow-auto p-2">
                 {links.map((l) => (
                   <NavLink
@@ -107,7 +138,11 @@ function SettingsLayout({ children }) {
                     }
                     style={({ isActive }) => ({
                       color: "#ffffff",
-                      ...(isActive ? { boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" } : {}),
+                      ...(isActive
+                        ? {
+                            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)",
+                          }
+                        : {}),
                     })}
                   >
                     {l.label}

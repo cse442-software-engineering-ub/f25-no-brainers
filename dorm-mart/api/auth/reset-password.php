@@ -32,12 +32,12 @@ if (strpos($ct, 'application/json') !== false) {
         $data = [];
     }
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($data['token']) ? trim((string)$data['token']) : '';
-    $newPassword = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+    $token = isset($data['token']) ? trim((string) $data['token']) : '';
+    $newPassword = isset($data['newPassword']) ? (string) $data['newPassword'] : '';
 } else {
     // IMPORTANT: Do NOT HTML-encode passwords before hashing - use raw input
-    $token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
-    $newPassword = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+    $token = isset($_POST['token']) ? trim((string) $_POST['token']) : '';
+    $newPassword = isset($_POST['newPassword']) ? (string) $_POST['newPassword'] : '';
 }
 
 // Validate inputs
@@ -69,7 +69,7 @@ if (
 
 try {
     $conn = db();
-    
+
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement (No User Input in Query)
     // ============================================================================
@@ -88,7 +88,7 @@ try {
 
     $isValidToken = false;
     $userId = null;
-    
+
     while ($row = $result->fetch_assoc()) {
         if (password_verify($token, $row['hash_auth'])) {
             $isValidToken = true;
@@ -122,7 +122,7 @@ try {
     ');
     $stmt->bind_param('si', $hashedPassword, $userId);  // 's' = string, 'i' = integer
     $stmt->execute();
-    
+
     if ($stmt->affected_rows === 0) {
         $stmt->close();
         $conn->close();
@@ -137,7 +137,7 @@ try {
         'success' => true,
         'message' => 'Password has been reset successfully'
     ]);
-    
+
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Server error']);

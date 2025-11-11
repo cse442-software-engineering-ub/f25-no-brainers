@@ -6,7 +6,9 @@ import keyboard from "../../assets/product-images/keyboard.jpg";
 import mouse from "../../assets/product-images/wireless-mouse.jpg";
 
 const PUBLIC_BASE = (process.env.PUBLIC_URL || "").replace(/\/$/, "");
-const API_BASE = (process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`).replace(/\/$/, "");
+const API_BASE = (
+  process.env.REACT_APP_API_BASE || `${PUBLIC_BASE}/api`
+).replace(/\/$/, "");
 const carpetUrl = `${PUBLIC_BASE}/assets/product-images/smallcarpet.png`;
 
 const FALLBACK_ITEMS = [
@@ -24,7 +26,7 @@ const FALLBACK_ITEMS = [
   },
   {
     id: 2,
-    title: "Small Carpet (5x7)", 
+    title: "Small Carpet (5x7)",
     price: 25,
     img: carpetUrl,
     tags: ["Furniture", "Decor"],
@@ -158,7 +160,10 @@ export default function LandingPage() {
           const tags = Array.isArray(d.tags)
             ? d.tags
             : typeof d.tags === "string"
-            ? d.tags.split(",").map((t) => t.trim()).filter(Boolean)
+            ? d.tags
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean)
             : [];
 
           const category = d.category || (tags.length ? tags[0] : "General");
@@ -202,7 +207,9 @@ export default function LandingPage() {
     const controller = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`${API_BASE}/utility/get_categories.php`, { signal: controller.signal });
+        const r = await fetch(`${API_BASE}/utility/get_categories.php`, {
+          signal: controller.signal,
+        });
         if (!r.ok) return;
         const data = await r.json();
         if (Array.isArray(data)) setAllCategories(data);
@@ -256,12 +263,14 @@ export default function LandingPage() {
     // Sort each interest bucket: primary tag (category) first, then by newest date
     const cmp = (cat) => (a, b) => {
       const catLower = (cat || "").toLowerCase();
-      const aPrimary = Array.isArray(a.tags) && a.tags[0]
-        ? String(a.tags[0]).toLowerCase() === catLower
-        : false;
-      const bPrimary = Array.isArray(b.tags) && b.tags[0]
-        ? String(b.tags[0]).toLowerCase() === catLower
-        : false;
+      const aPrimary =
+        Array.isArray(a.tags) && a.tags[0]
+          ? String(a.tags[0]).toLowerCase() === catLower
+          : false;
+      const bPrimary =
+        Array.isArray(b.tags) && b.tags[0]
+          ? String(b.tags[0]).toLowerCase() === catLower
+          : false;
       if (aPrimary !== bPrimary) return aPrimary ? -1 : 1;
       const at = typeof a.createdAtTs === "number" ? a.createdAtTs : 0;
       const bt = typeof b.createdAtTs === "number" ? b.createdAtTs : 0;
@@ -302,7 +311,9 @@ export default function LandingPage() {
                 key={cat}
                 onClick={() =>
                   openExternalRoute(
-                    `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`
+                    `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(
+                      cat
+                    )}`
                   )
                 }
                 className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-4 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
@@ -349,19 +360,27 @@ export default function LandingPage() {
                 For you
               </button>
               <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?sort=new`)}
+                onClick={() =>
+                  openExternalRoute(`${PUBLIC_BASE}/#/app/listings?sort=new`)
+                }
                 className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200"
               >
                 Newest
               </button>
               <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?maxPrice=20`)}
+                onClick={() =>
+                  openExternalRoute(`${PUBLIC_BASE}/#/app/listings?maxPrice=20`)
+                }
                 className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 Under $20
               </button>
               <button
-                onClick={() => openExternalRoute(`${PUBLIC_BASE}/#/app/listings?minPrice=100`)}
+                onClick={() =>
+                  openExternalRoute(
+                    `${PUBLIC_BASE}/#/app/listings?minPrice=100`
+                  )
+                }
                 className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm font-medium border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
               >
                 Luxury
@@ -371,26 +390,42 @@ export default function LandingPage() {
 
           {/* metrics */}
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 px-4 py-4 flex flex-col gap-4">
-                          <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 tracking-tight">
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300 tracking-tight">
               Today’s snapshot
             </p>
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">New listings</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">+8</p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">in last 24h</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">
+                  New listings
+                </p>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">
+                  +8
+                </p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                  in last 24h
+                </p>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Near you</p>
-                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">12</p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">North Campus</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">
+                  Near you
+                </p>
+                <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">
+                  12
+                </p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                  North Campus
+                </p>
               </div>
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-100/70 dark:border-blue-800/70 px-3 py-3">
-                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">Interested</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mb-1">
+                  Interested
+                </p>
                 <p className="text-2xl font-bold text-blue-700 dark:text-blue-400 leading-none">
                   {interests.length ? interests.length : "0"}
                 </p>
-                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">categories</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400 mt-1">
+                  categories
+                </p>
               </div>
             </div>
           </div>
@@ -407,11 +442,18 @@ export default function LandingPage() {
                 Quick filters
               </p>
               <div className="flex flex-wrap gap-2">
-                {(allCategories.length ? allCategories : ["Electronics","Kitchen","Furniture","Dorm Essentials"]).map((cat) => (
+                {(allCategories.length
+                  ? allCategories
+                  : ["Electronics", "Kitchen", "Furniture", "Dorm Essentials"]
+                ).map((cat) => (
                   <button
                     key={cat}
                     onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(cat)}`)
+                      openExternalRoute(
+                        `${PUBLIC_BASE}/#/app/listings?category=${encodeURIComponent(
+                          cat
+                        )}`
+                      )
                     }
                     className="px-4 py-1.5 rounded-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm border border-gray-100 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
                   >
@@ -446,7 +488,7 @@ export default function LandingPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate('/app/setting/user-preferences')}
+                    onClick={() => navigate("/app/setting/user-preferences")}
                     className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                   >
                     Manage interests
@@ -464,10 +506,7 @@ export default function LandingPage() {
                         <div className="flex gap-4 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-blue-200 dark:scrollbar-thumb-blue-700 w-full max-w-full min-w-0">
                           {catItems.length ? (
                             catItems.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex-shrink-0"
-                              >
+                              <div key={item.id} className="flex-shrink-0">
                                 <ItemCardNew
                                   id={item.id}
                                   title={item.title}
@@ -551,7 +590,9 @@ export default function LandingPage() {
                 <li className="flex items-center justify-between gap-2">
                   <button
                     onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Electronics`)
+                      openExternalRoute(
+                        `${PUBLIC_BASE}/#/app/listings?category=Electronics`
+                      )
                     }
                     className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >
@@ -564,7 +605,9 @@ export default function LandingPage() {
                 <li className="flex items-center justify-between gap-2">
                   <button
                     onClick={() =>
-                      openExternalRoute(`${PUBLIC_BASE}/#/app/listings?category=Kitchen`)
+                      openExternalRoute(
+                        `${PUBLIC_BASE}/#/app/listings?category=Kitchen`
+                      )
                     }
                     className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                   >

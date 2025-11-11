@@ -13,9 +13,9 @@ $conn->query("
 ) ENGINE=InnoDB");
 
 // Copy test images from data/test-images/ to images/ directory (idempotent)
-$dataDir = dirname(__DIR__,2) . '/data';                        // Path to the data folder
+$dataDir = dirname(__DIR__, 2) . '/data';                        // Path to the data folder
 $testImagesDir = $dataDir . '/test-images';                    // Path to test-images subdirectory
-$imagesDir = dirname(__DIR__,2) . '/images';                   // Path to images directory
+$imagesDir = dirname(__DIR__, 2) . '/images';                   // Path to images directory
 
 if (is_dir($testImagesDir) && is_dir($imagesDir)) {
   $testImageFiles = glob($testImagesDir . '/*');                // Get all files in test-images
@@ -40,7 +40,7 @@ $ran = [];                                                      // Keep track of
 // Run every file, regardless of past executions
 foreach ($files as $path) {
   $name = basename($path);                                      // Extract filename only
-  $sql  = file_get_contents($path);                             // Read the SQL script contents
+  $sql = file_get_contents($path);                             // Read the SQL script contents
 
   $conn->begin_transaction();                                   // Start an atomic transaction
 
@@ -64,7 +64,8 @@ foreach ($files as $path) {
     }
 
     // Flush all result sets produced by multi_query to clear the connection for next use
-    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+    while ($conn->more_results() && $conn->next_result()) { /* flush */
+    }
 
     // Re-enable foreign key checks after successful execution
     if (!$conn->query("SET FOREIGN_KEY_CHECKS = 1")) {

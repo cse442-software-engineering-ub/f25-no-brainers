@@ -93,9 +93,9 @@ if (strpos($ct, 'application/json') !== false) {
     if (!is_array($data)) {
         $data = [];
     }
-    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
+    $emailRaw = strtolower(trim((string) ($data['email'] ?? '')));
 } else {
-    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
+    $emailRaw = strtolower(trim((string) ($_POST['email'] ?? '')));
 }
 
 // XSS PROTECTION: Check for XSS patterns in email field
@@ -146,7 +146,7 @@ try {
         $stmt->execute();
         $result = $stmt->get_result();
         $row = $result->fetch_assoc();
-        $minutesPassed = (int)$row['minutes_passed'];
+        $minutesPassed = (int) $row['minutes_passed'];
         $stmt->close();
 
         if ($minutesPassed < 10) { // 10 minute rate limit
@@ -191,7 +191,7 @@ try {
     $emailResult = sendPasswordResetEmail($user, $resetLink, $envLabel);
     $emailEndTime = microtime(true);
     $emailDuration = round(($emailEndTime - $emailStartTime) * 1000, 2); // milliseconds
-    
+
     // Debug: Log email timing
     error_log("Reset password email duration: {$emailDuration}ms");
 
@@ -218,7 +218,7 @@ try {
 function get_reset_password_base_url(): string
 {
     // Prefer explicit origin/host detection
-    $host   = $_SERVER['HTTP_HOST']   ?? '';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
     $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
     // Production server

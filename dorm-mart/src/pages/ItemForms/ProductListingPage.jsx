@@ -131,7 +131,8 @@ function ProductListingPage() {
           setAvailableCategories(data.map(String));
         }
       } catch (e) {
-        if (!ignore) setCatFetchError(e?.message || "Failed to load categories.");
+        if (!ignore)
+          setCatFetchError(e?.message || "Failed to load categories.");
       } finally {
         if (!ignore) setCatLoading(false);
       }
@@ -236,12 +237,12 @@ function ProductListingPage() {
       /<embed/i,
       /<img[^>]*on/i,
       /<svg[^>]*on/i,
-      /vbscript:/i
+      /vbscript:/i,
     ];
 
     if (!title.trim()) {
       newErrors.title = "Title is required";
-    } else if (xssPatterns.some(pattern => pattern.test(title))) {
+    } else if (xssPatterns.some((pattern) => pattern.test(title))) {
       newErrors.title = "Invalid characters in title";
     } else if (title.length > LIMITS.title) {
       newErrors.title = `Title must be ${LIMITS.title} characters or fewer`;
@@ -249,7 +250,7 @@ function ProductListingPage() {
 
     if (!description.trim()) {
       newErrors.description = "Description is required";
-    } else if (xssPatterns.some(pattern => pattern.test(description))) {
+    } else if (xssPatterns.some((pattern) => pattern.test(description))) {
       newErrors.description = "Invalid characters in description";
     } else if (description.length > LIMITS.description) {
       newErrors.description = `Description must be ${LIMITS.description} characters or fewer`;
@@ -883,33 +884,31 @@ function ProductListingPage() {
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-                {images.length ? (
-                  images.map((img, i) => (
-                    <div key={i} className="relative group">
-                      <img
-                        src={img.url}
-                        alt={`preview-${i}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => removeImage(i)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="remove image"
+                {images.length
+                  ? images.map((img, i) => (
+                      <div key={i} className="relative group">
+                        <img
+                          src={img.url}
+                          alt={`preview-${i}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => removeImage(i)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))
+                  : Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 text-sm"
                       >
-                        ✕
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-24 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center text-gray-400 text-sm"
-                    >
-                      No photo
-                    </div>
-                  ))
-                )}
+                        No photo
+                      </div>
+                    ))}
               </div>
 
               <input
@@ -938,23 +937,37 @@ function ProductListingPage() {
               </h3>
               <ul className="text-sm text-blue-800 dark:text-blue-100 space-y-3">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Consider bringing a friend, especially for high value items</span>
+                  <span className="text-blue-600 dark:text-blue-200 mt-1">
+                    •
+                  </span>
+                  <span>
+                    Consider bringing a friend, especially for high value items
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
+                  <span className="text-blue-600 dark:text-blue-200 mt-1">
+                    •
+                  </span>
                   <span>Report suspicious messages or behavior</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
-                  <span>Trust your gut. Don't proceed if something feels off</span>
+                  <span className="text-blue-600 dark:text-blue-200 mt-1">
+                    •
+                  </span>
+                  <span>
+                    Trust your gut. Don't proceed if something feels off
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
+                  <span className="text-blue-600 dark:text-blue-200 mt-1">
+                    •
+                  </span>
                   <span>Keep receipts or transaction records</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 dark:text-blue-200 mt-1">•</span>
+                  <span className="text-blue-600 dark:text-blue-200 mt-1">
+                    •
+                  </span>
                   <span>Use secure payment methods (cash, Venmo, Zelle)</span>
                 </li>
               </ul>
@@ -1066,7 +1079,8 @@ function ProductListingPage() {
               Crop image to 1:1
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-              Drag the square to choose the area you want. The square size is fixed.
+              Drag the square to choose the area you want. The square size is
+              fixed.
             </p>
 
             <div

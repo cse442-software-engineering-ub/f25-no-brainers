@@ -16,16 +16,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $conn = db();
 $conn->query("SET time_zone = '+00:00'");
 
-session_start(); 
-$userId = (int)($_SESSION['user_id'] ?? 0);
+session_start();
+$userId = (int) ($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
     exit;
 }
 
-$convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
-$tsSec  = isset($_GET['ts']) ? (int)$_GET['ts'] : 0;
+$convId = isset($_GET['conv_id']) ? (int) $_GET['conv_id'] : 0;
+$tsSec = isset($_GET['ts']) ? (int) $_GET['ts'] : 0;
 
 $stmt = $conn->prepare(
     'SELECT
@@ -63,7 +63,7 @@ $stmt->execute();
 $stmt->close();
 
 echo json_encode([
-    'success'  => true,
-    'conv_id'  => $convId,
+    'success' => true,
+    'conv_id' => $convId,
     'messages' => $messages, // array of only-new messages
 ], JSON_UNESCAPED_SLASHES);

@@ -6,10 +6,10 @@ import RootLayout from "./pages/RootLayout";
 // auth
 import LoginPage from "./pages/LoginPage";
 import LandingPage from "./pages/HomePage/LandingPage";
-import ForgotPasswordPage from './pages/ForgotPasswordPage.js';
-import ResetPasswordConfirmation from './pages/ResetPassword/ResetPasswordConfirmation.jsx';
-import ForgotPasswordConfirmation from './pages/ResetPassword/ForgotPasswordConfirmation.jsx';
-import ResetPasswordForm from './pages/ResetPassword/ResetPasswordForm.jsx';
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.js";
+import ResetPasswordConfirmation from "./pages/ResetPassword/ResetPasswordConfirmation.jsx";
+import ForgotPasswordConfirmation from "./pages/ResetPassword/ForgotPasswordConfirmation.jsx";
+import ResetPasswordForm from "./pages/ResetPassword/ResetPasswordForm.jsx";
 // app
 import PurchaseHistoryPage from "./pages/PurchaseHistory/PurchaseHistoryPage";
 import PurchaseHistoryLayout from "./pages/PurchaseHistory/PurchaseHistoryLayout";
@@ -17,7 +17,7 @@ import ProductListingPage from "./pages/ItemForms/ProductListingPage.jsx";
 import CreateAccount from "./pages/AccountCreation/index.jsx";
 import ChangePasswordPage from "./pages/Settings/ChangePassword.jsx";
 import UserPreferences from "./pages/Settings/UserPreferences.jsx";
-import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js"
+import ItemDetailPage from "./pages/PurchaseHistory/ItemDetailPage.js";
 import SellerDashboardPage from "./pages/SellerDashboard/SellerDashboardPage.jsx";
 import SchedulePurchasePage from "./pages/SellerDashboard/SchedulePurchasePage.jsx";
 import ConfirmPurchasePage from "./pages/SellerDashboard/ConfirmPurchasePage.jsx";
@@ -37,10 +37,16 @@ export const router = createHashRouter([
   // Auth
   { path: "/login", element: <LoginPage /> },
   { path: "/create-account", element: <CreateAccount /> },
-  { path: "/forgot-password", element: <ForgotPasswordPage />},
-  { path: "/forgot-password/confirmation", element: <ForgotPasswordConfirmation />},
+  { path: "/forgot-password", element: <ForgotPasswordPage /> },
+  {
+    path: "/forgot-password/confirmation",
+    element: <ForgotPasswordConfirmation />,
+  },
   { path: "/reset-password", element: <ResetPasswordForm /> },
-  { path: "/reset-password/confirmation", element: <ResetPasswordConfirmation /> },
+  {
+    path: "/reset-password/confirmation",
+    element: <ResetPasswordConfirmation />,
+  },
   // Main app
   {
     path: "/app",
@@ -50,9 +56,7 @@ export const router = createHashRouter([
       </ChatProvider>
     ),
     children: [
-    { index: true,
-      element: <LandingPage /> 
-    },
+      { index: true, element: <LandingPage /> },
       // Search Results
       { path: "listings", element: <SearchResults /> },
       // Product Listing
@@ -79,9 +83,7 @@ export const router = createHashRouter([
       },
       {
         path: "chat",
-        children: [
-          { index: true, element: < ChatPage/>}
-        ]
+        children: [{ index: true, element: <ChatPage /> }],
       },
       // Seller Dashboard
       {
@@ -112,7 +114,10 @@ export const router = createHashRouter([
       {
         path: "setting",
         children: [
-          { index: true, element: <Navigate to="/app/setting/change-password" replace /> },
+          {
+            index: true,
+            element: <Navigate to="/app/setting/change-password" replace />,
+          },
           { path: "change-password", element: <ChangePasswordPage /> },
           // User Preferences
           { path: "user-preferences", element: <UserPreferences /> },

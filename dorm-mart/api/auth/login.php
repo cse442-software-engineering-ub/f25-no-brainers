@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-    $raw  = file_get_contents('php://input');
+    $raw = file_get_contents('php://input');
     // XSS PROTECTION: Decode JSON first, then validate individual fields (don't HTML-encode JSON)
     $data = json_decode($raw, true);
     if (!is_array($data)) {
@@ -49,12 +49,12 @@ if (strpos($ct, 'application/json') !== false) {
         echo json_encode(['ok' => false, 'error' => 'Invalid JSON format']);
         exit;
     }
-    
-    $emailRaw = strtolower(trim((string)($data['email'] ?? '')));
-    $passwordRaw = (string)($data['password'] ?? '');
+
+    $emailRaw = strtolower(trim((string) ($data['email'] ?? '')));
+    $passwordRaw = (string) ($data['password'] ?? '');
 } else {
-    $emailRaw = strtolower(trim((string)($_POST['email'] ?? '')));
-    $passwordRaw = (string)($_POST['password'] ?? '');
+    $emailRaw = strtolower(trim((string) ($_POST['email'] ?? '')));
+    $passwordRaw = (string) ($_POST['password'] ?? '');
 }
 
 // XSS PROTECTION: Check for XSS patterns in email field (single check, no duplication)
@@ -104,7 +104,7 @@ try {
     }
 
     $conn = db();
-    
+
     // ============================================================================
     // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
     // ============================================================================
@@ -121,12 +121,12 @@ try {
     if ($res->num_rows === 0) {
         $stmt->close();
         $conn->close();
-        
+
         // Record failed attempt for non-existent user (but don't reveal this)
         // Always return same error message to prevent email enumeration
         // Session-based rate limiting prevents account lockout attacks
         record_session_failed_attempt();
-        
+
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
@@ -137,20 +137,20 @@ try {
     // SECURITY NOTE: password_verify() safely checks the submitted
     // plaintext against the STORED salted hash from password_hash(). The salt is
     // inside the hash; we never store or handle it separately.
-    if (!password_verify($password, (string)$row['hash_pass'])) {
+    if (!password_verify($password, (string) $row['hash_pass'])) {
         $conn->close();
-        
+
         // Record failed attempt (always return same error message to prevent email enumeration)
         // Session-based rate limiting prevents account lockout attacks
         record_session_failed_attempt();
-        
+
         http_response_code(401);
         echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
         exit;
     }
 
-    $userId = (int)$row['user_id'];
-    
+    $userId = (int) $row['user_id'];
+
     // SQL INJECTION PROTECTION: Prepared statement for theme query (user_id parameter bound safely)
     $themeStmt = $conn->prepare('SELECT theme FROM user_accounts WHERE user_id = ?');
     $themeStmt->bind_param('i', $userId);  // 'i' = integer type
@@ -159,7 +159,7 @@ try {
     $themeRow = $themeRes->fetch_assoc();
     $themeStmt->close();
     $conn->close();
-    
+
     $theme = 'light'; // default
     if ($themeRow && isset($themeRow['theme'])) {
         $theme = $themeRow['theme'] ? 'dark' : 'light';

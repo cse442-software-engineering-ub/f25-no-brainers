@@ -16,7 +16,7 @@ function LoginPage() {
   // Check if user is already authenticated on mount
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
@@ -24,7 +24,7 @@ function LoginPage() {
         navigate("/app", { replace: true });
       } catch (error) {
         // AbortError means component unmounted, don't navigate
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
           return;
         }
         // User is not authenticated, stay on login page
@@ -32,7 +32,7 @@ function LoginPage() {
     };
 
     checkAuth();
-    
+
     // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
@@ -41,17 +41,21 @@ function LoginPage() {
 
   // Handle URL parameters
   useEffect(() => {
-    const urlError = searchParams.get('error');
-    const urlMessage = searchParams.get('message');
-    
-    if (urlError === 'reset_link_expired') {
+    const urlError = searchParams.get("error");
+    const urlMessage = searchParams.get("message");
+
+    if (urlError === "reset_link_expired") {
       setError("Password reset link has expired. Please request a new one.");
-    } else if (urlError === 'invalid_reset_link') {
-      setError("Invalid password reset link. Please use the link from your email.");
+    } else if (urlError === "invalid_reset_link") {
+      setError(
+        "Invalid password reset link. Please use the link from your email."
+      );
     }
-    
-    if (urlMessage === 'password_reset_success') {
-      setSuccess("Password has been reset successfully. You can now log in with your new password.");
+
+    if (urlMessage === "password_reset_success") {
+      setSuccess(
+        "Password has been reset successfully. You can now log in with your new password."
+      );
     }
   }, [searchParams]);
 
@@ -79,11 +83,11 @@ function LoginPage() {
       /<embed/i,
       /<img[^>]*on/i,
       /<svg[^>]*on/i,
-      /vbscript:/i
+      /vbscript:/i,
     ];
-    
+
     const emailTrimmed = email.trim();
-    if (xssPatterns.some(pattern => pattern.test(emailTrimmed))) {
+    if (xssPatterns.some((pattern) => pattern.test(emailTrimmed))) {
       setError("Invalid email format");
       setLoading(false);
       return;
@@ -129,21 +133,24 @@ function LoginPage() {
 
       if (data.ok) {
         // Auth token is now set server-side as httpOnly cookie
-        
+
         // Apply theme immediately after successful login
         if (data.theme) {
-          if (data.theme === 'dark') {
-            document.documentElement.classList.add('dark');
+          if (data.theme === "dark") {
+            document.documentElement.classList.add("dark");
           } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
           }
-          
+
           // Also save to localStorage for immediate access
           try {
-            const meRes = await fetch(`${process.env.REACT_APP_API_BASE}/auth/me.php`, { 
-              method: 'GET', 
-              credentials: 'include' 
-            });
+            const meRes = await fetch(
+              `${process.env.REACT_APP_API_BASE}/auth/me.php`,
+              {
+                method: "GET",
+                credentials: "include",
+              }
+            );
             if (meRes.ok) {
               const meJson = await meRes.json();
               const userId = meJson.user_id;
@@ -156,7 +163,7 @@ function LoginPage() {
             // User not authenticated or error - continue anyway
           }
         }
-        
+
         // Navigate to the main app
         navigate("/app");
       } else {

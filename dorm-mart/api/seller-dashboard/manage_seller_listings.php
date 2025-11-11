@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 try {
     // Require authentication - this will redirect to login if not authenticated
     $userId = require_login();
-    
+
     // DB connection
     $conn = db();
     $conn->set_charset('utf8mb4');
@@ -110,9 +110,9 @@ try {
             }
         }
 
-        $isSold = isset($row['sold']) ? (bool)$row['sold'] : false;
+        $isSold = isset($row['sold']) ? (bool) $row['sold'] : false;
         $buyerId = $isSold ? ($row['sold_to'] ?? null) : null;
-        $statusFromDb = isset($row['item_status']) && $row['item_status'] !== '' ? (string)$row['item_status'] : null;
+        $statusFromDb = isset($row['item_status']) && $row['item_status'] !== '' ? (string) $row['item_status'] : null;
         $status = $statusFromDb ?? ($isSold ? 'Sold' : 'Active');
 
         // derive categories from JSON column if present
@@ -121,26 +121,27 @@ try {
             $tmp = json_decode($row['categories'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($tmp)) {
                 foreach ($tmp as $v) {
-                    if (is_string($v) && $v !== '') $catsArr[] = $v;
+                    if (is_string($v) && $v !== '')
+                        $catsArr[] = $v;
                 }
             }
         }
 
-        $hasAcceptedScheduledPurchase = isset($row['has_accepted_scheduled_purchase']) && (int)$row['has_accepted_scheduled_purchase'] === 1;
+        $hasAcceptedScheduledPurchase = isset($row['has_accepted_scheduled_purchase']) && (int) $row['has_accepted_scheduled_purchase'] === 1;
 
-        $priceNegotiable = isset($row['price_nego']) ? ((int)$row['price_nego'] === 1) : false;
-        $acceptTrades = isset($row['trades']) ? ((int)$row['trades'] === 1) : false;
-        $itemMeetLocation = isset($row['meet_location']) ? trim((string)$row['meet_location']) : null;
+        $priceNegotiable = isset($row['price_nego']) ? ((int) $row['price_nego'] === 1) : false;
+        $acceptTrades = isset($row['trades']) ? ((int) $row['trades'] === 1) : false;
+        $itemMeetLocation = isset($row['meet_location']) ? trim((string) $row['meet_location']) : null;
 
         // XSS PROTECTION: json_encode() automatically escapes special characters for JSON
         // No need to manually escape - json_encode handles it safely
         $data[] = [
-            'id' => (int)$row['product_id'],
-            'title' => (string)$row['title'],
-            'price' => isset($row['listing_price']) ? (float)$row['listing_price'] : 0.0,
+            'id' => (int) $row['product_id'],
+            'title' => (string) $row['title'],
+            'price' => isset($row['listing_price']) ? (float) $row['listing_price'] : 0.0,
             'status' => $status,
-            'buyer_user_id' => $buyerId !== null ? (int)$buyerId : null,
-            'seller_user_id' => (int)$row['seller_id'],
+            'buyer_user_id' => $buyerId !== null ? (int) $buyerId : null,
+            'seller_user_id' => (int) $row['seller_id'],
             'created_at' => $row['date_listed'],
             'image_url' => $firstImage,
             'categories' => $catsArr,
@@ -161,7 +162,7 @@ try {
     // Include error message in development for debugging (always show for now)
     $debug = true; // Temporarily enabled for debugging
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'error' => $e->getMessage(),
         'file' => $debug ? $e->getFile() : null,
         'line' => $debug ? $e->getLine() : null,

@@ -32,7 +32,7 @@ try {
     $_SESSION['login_failed_attempts'] = 0;
     $_SESSION['login_last_failed_attempt'] = null;
     $_SESSION['login_lockout_until'] = null;
-    
+
     $response = [
         'success' => true,
         'message' => 'Session rate limiting lockout has been cleared!',
@@ -41,7 +41,7 @@ try {
             'note' => 'You can now attempt login without rate limiting restrictions for this session.'
         ]
     ];
-    
+
     if (php_sapi_name() === 'cli') {
         echo "SUCCESS: Session rate limiting lockout has been cleared!\n";
         echo "Session ID: " . session_id() . "\n";
@@ -55,7 +55,7 @@ try {
         'error' => 'Failed to reset session lockout',
         'message' => $e->getMessage()
     ];
-    
+
     if (php_sapi_name() === 'cli') {
         echo "ERROR: Failed to reset session lockout\n";
         echo "Details: " . $e->getMessage() . "\n";

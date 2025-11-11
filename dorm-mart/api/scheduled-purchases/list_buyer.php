@@ -90,23 +90,23 @@ try {
 
         $photos = [];
         if (!empty($row['item_photos'])) {
-            $decoded = json_decode((string)$row['item_photos'], true);
+            $decoded = json_decode((string) $row['item_photos'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $photos = $decoded;
             }
         }
 
-        $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
-            ? (float)$row['negotiated_price'] : null;
+        $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null
+            ? (float) $row['negotiated_price'] : null;
         $isTrade = isset($row['is_trade']) && ($row['is_trade'] === 1 || $row['is_trade'] === true || $row['is_trade'] === '1');
-        $tradeItemDescription = isset($row['trade_item_description']) && $row['trade_item_description'] !== null 
-            ? (string)$row['trade_item_description'] : null;
-        
+        $tradeItemDescription = isset($row['trade_item_description']) && $row['trade_item_description'] !== null
+            ? (string) $row['trade_item_description'] : null;
+
         $canceledBy = null;
         if (isset($row['canceled_by_user_id']) && $row['canceled_by_user_id'] !== null) {
-            $canceledByUserId = (int)$row['canceled_by_user_id'];
-            $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string)$row['canceled_by_first_name'] : '';
-            $canceledByLastName = isset($row['canceled_by_last_name']) ? (string)$row['canceled_by_last_name'] : '';
+            $canceledByUserId = (int) $row['canceled_by_user_id'];
+            $canceledByFirstName = isset($row['canceled_by_first_name']) ? (string) $row['canceled_by_first_name'] : '';
+            $canceledByLastName = isset($row['canceled_by_last_name']) ? (string) $row['canceled_by_last_name'] : '';
             $canceledBy = [
                 'user_id' => $canceledByUserId,
                 'first_name' => $canceledByFirstName,
@@ -115,16 +115,16 @@ try {
         }
 
         $records[] = [
-            'request_id' => (int)$row['request_id'],
-            'inventory_product_id' => (int)$row['inventory_product_id'],
-            'seller_user_id' => (int)$row['seller_user_id'],
-            'buyer_user_id' => (int)$row['buyer_user_id'],
-            'conversation_id' => $row['conversation_id'] !== null ? (int)$row['conversation_id'] : null,
-            'meet_location' => (string)$row['meet_location'],
+            'request_id' => (int) $row['request_id'],
+            'inventory_product_id' => (int) $row['inventory_product_id'],
+            'seller_user_id' => (int) $row['seller_user_id'],
+            'buyer_user_id' => (int) $row['buyer_user_id'],
+            'conversation_id' => $row['conversation_id'] !== null ? (int) $row['conversation_id'] : null,
+            'meet_location' => (string) $row['meet_location'],
             'meeting_at' => $meetingAtIso,
-            'verification_code' => (string)$row['verification_code'],
-            'description' => isset($row['description']) ? (string)$row['description'] : null,
-            'status' => (string)$row['status'],
+            'verification_code' => (string) $row['verification_code'],
+            'description' => isset($row['description']) ? (string) $row['description'] : null,
+            'status' => (string) $row['status'],
             'buyer_response_at' => $responseAtIso,
             'created_at' => $row['created_at'],
             'updated_at' => $row['updated_at'],
@@ -133,13 +133,13 @@ try {
             'trade_item_description' => $tradeItemDescription,
             'canceled_by' => $canceledBy,
             'item' => [
-                'title' => (string)$row['item_title'],
+                'title' => (string) $row['item_title'],
                 'photos' => $photos,
-                'listing_price' => isset($row['item_listing_price']) ? (float)$row['item_listing_price'] : null,
+                'listing_price' => isset($row['item_listing_price']) ? (float) $row['item_listing_price'] : null,
             ],
             'seller' => [
-                'first_name' => (string)$row['seller_first_name'],
-                'last_name' => (string)$row['seller_last_name'],
+                'first_name' => (string) $row['seller_first_name'],
+                'last_name' => (string) $row['seller_last_name'],
             ],
         ];
     }

@@ -33,8 +33,8 @@ try {
         exit;
     }
 
-    $requestId = isset($payload['request_id']) ? (int)$payload['request_id'] : 0;
-    $action = isset($payload['action']) ? strtolower(trim((string)$payload['action'])) : '';
+    $requestId = isset($payload['request_id']) ? (int) $payload['request_id'] : 0;
+    $action = isset($payload['action']) ? strtolower(trim((string) $payload['action'])) : '';
 
     if ($requestId <= 0 || ($action !== 'accept' && $action !== 'decline')) {
         http_response_code(400);
@@ -85,7 +85,7 @@ try {
         exit;
     }
 
-    if ((int)$row['buyer_user_id'] !== $buyerId) {
+    if ((int) $row['buyer_user_id'] !== $buyerId) {
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Not authorized to respond to this request']);
         exit;
@@ -99,7 +99,7 @@ try {
 
     // Prevent double-booking: Check if item is already pending before accepting
     // This prevents multiple buyers from accepting scheduled purchases for the same item
-    $inventoryProductId = (int)$row['inventory_product_id'];
+    $inventoryProductId = (int) $row['inventory_product_id'];
     if ($action === 'accept' && $inventoryProductId > 0) {
         // Check current item status
         $itemStatusCheckStmt = $conn->prepare('SELECT item_status FROM INVENTORY WHERE product_id = ? LIMIT 1');
@@ -111,7 +111,7 @@ try {
         $itemStatusRes = $itemStatusCheckStmt->get_result();
         $itemStatusRow = $itemStatusRes ? $itemStatusRes->fetch_assoc() : null;
         $itemStatusCheckStmt->close();
-        
+
         // If item already has 'Pending' status, reject this acceptance
         if ($itemStatusRow && isset($itemStatusRow['item_status']) && $itemStatusRow['item_status'] === 'Pending') {
             http_response_code(409);
@@ -129,7 +129,7 @@ try {
     $updateStmt->bind_param('si', $nextStatus, $requestId);
     $updateStmt->execute();
     $updateStmt->close();
-    
+
     // Update item status based on scheduled purchase status
     if ($inventoryProductId > 0) {
         if ($nextStatus === 'accepted') {
@@ -137,15 +137,15 @@ try {
             // This ensures buyer gets the item as it was when scheduled, even if seller changed settings
             // Example: If item was price negotiable when scheduled but seller removed that later,
             // the accepted purchase still honors the negotiated price
-            
+
             // Get snapshot values with fallback to current inventory values if snapshots are missing
             // (shouldn't happen, but provides safety)
-            $snapshotPriceNego = isset($row['snapshot_price_nego']) ? ((int)$row['snapshot_price_nego'] === 1) : null;
-            $snapshotTrades = isset($row['snapshot_trades']) ? ((int)$row['snapshot_trades'] === 1) : null;
-            $snapshotMeetLocation = isset($row['snapshot_meet_location']) ? trim((string)$row['snapshot_meet_location']) : null;
-            $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null 
-                ? (float)$row['negotiated_price'] : null;
-            
+            $snapshotPriceNego = isset($row['snapshot_price_nego']) ? ((int) $row['snapshot_price_nego'] === 1) : null;
+            $snapshotTrades = isset($row['snapshot_trades']) ? ((int) $row['snapshot_trades'] === 1) : null;
+            $snapshotMeetLocation = isset($row['snapshot_meet_location']) ? trim((string) $row['snapshot_meet_location']) : null;
+            $negotiatedPrice = isset($row['negotiated_price']) && $row['negotiated_price'] !== null
+                ? (float) $row['negotiated_price'] : null;
+
             // If snapshot values are missing, fetch current inventory values as fallback
             // This should never happen, but provides safety
             if ($snapshotPriceNego === null || $snapshotTrades === null) {
@@ -156,48 +156,48 @@ try {
                     $fallbackRes = $fallbackStmt->get_result();
                     $fallbackRow = $fallbackRes ? $fallbackRes->fetch_assoc() : null;
                     $fallbackStmt->close();
-                    
+
                     if ($fallbackRow) {
                         if ($snapshotPriceNego === null) {
-                            $snapshotPriceNego = isset($fallbackRow['price_nego']) ? ((int)$fallbackRow['price_nego'] === 1) : false;
+                            $snapshotPriceNego = isset($fallbackRow['price_nego']) ? ((int) $fallbackRow['price_nego'] === 1) : false;
                         }
                         if ($snapshotTrades === null) {
-                            $snapshotTrades = isset($fallbackRow['trades']) ? ((int)$fallbackRow['trades'] === 1) : false;
+                            $snapshotTrades = isset($fallbackRow['trades']) ? ((int) $fallbackRow['trades'] === 1) : false;
                         }
                         if ($snapshotMeetLocation === null) {
-                            $snapshotMeetLocation = isset($fallbackRow['item_location']) ? trim((string)$fallbackRow['item_location']) : null;
+                            $snapshotMeetLocation = isset($fallbackRow['item_location']) ? trim((string) $fallbackRow['item_location']) : null;
                         }
                         error_log('Warning: Using fallback inventory values for scheduled purchase ' . $requestId);
                     }
                 }
             }
-            
+
             // Ensure we have boolean values (default to false if still null)
             $snapshotPriceNego = $snapshotPriceNego !== null ? $snapshotPriceNego : false;
             $snapshotTrades = $snapshotTrades !== null ? $snapshotTrades : false;
-            
+
             // Build update query to forcefully set snapshot values
             $updateFields = ['item_status = ?'];
             $updateParams = ['Pending'];
             $updateTypes = 's';
-            
+
             // Forcefully update price_nego to snapshot value
             $updateFields[] = 'price_nego = ?';
             $updateParams[] = $snapshotPriceNego ? 1 : 0;
             $updateTypes .= 'i';
-            
+
             // Forcefully update trades to snapshot value
             $updateFields[] = 'trades = ?';
             $updateParams[] = $snapshotTrades ? 1 : 0;
             $updateTypes .= 'i';
-            
+
             // Forcefully update item_location to snapshot value if it exists
             if ($snapshotMeetLocation !== null && $snapshotMeetLocation !== '') {
                 $updateFields[] = 'item_location = ?';
                 $updateParams[] = $snapshotMeetLocation;
                 $updateTypes .= 's';
             }
-            
+
             // Update listing_price if negotiated_price is provided AND item was price negotiable when scheduled
             // This ensures we only update price for items that were negotiable at the time of scheduling
             // Allow 0 as a valid price (free item)
@@ -206,12 +206,12 @@ try {
                 $updateParams[] = $negotiatedPrice;
                 $updateTypes .= 'd';
             }
-            
+
             // Build WHERE clause parameters
             $updateParams[] = $inventoryProductId;
             $updateParams[] = 'Sold';
             $updateTypes .= 'is';
-            
+
             // Only update if item is not already 'Sold' (prevents overwriting completed transactions)
             $updateSql = 'UPDATE INVENTORY SET ' . implode(', ', $updateFields) . ' WHERE product_id = ? AND item_status != ?';
             $itemStatusStmt = $conn->prepare($updateSql);
@@ -236,9 +236,9 @@ try {
             $checkRes = $checkOtherAcceptedStmt->get_result();
             $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
             $checkOtherAcceptedStmt->close();
-            
-            $hasOtherAccepted = $checkRow && (int)$checkRow['cnt'] > 0;
-            
+
+            $hasOtherAccepted = $checkRow && (int) $checkRow['cnt'] > 0;
+
             // Only set back to Active if no other accepted scheduled purchases exist
             if (!$hasOtherAccepted) {
                 $itemStatusStmt = $conn->prepare('UPDATE INVENTORY SET item_status = ? WHERE product_id = ? AND item_status = ?');
@@ -252,9 +252,9 @@ try {
             }
         }
     }
-    
+
     // Create special message in chat
-    $conversationId = isset($row['conversation_id']) ? (int)$row['conversation_id'] : 0;
+    $conversationId = isset($row['conversation_id']) ? (int) $row['conversation_id'] : 0;
     if ($conversationId > 0) {
         // Get buyer name
         $buyerStmt = $conn->prepare('SELECT first_name, last_name FROM user_accounts WHERE user_id = ? LIMIT 1');
@@ -263,19 +263,19 @@ try {
         $buyerRes = $buyerStmt->get_result();
         $buyerRow = $buyerRes ? $buyerRes->fetch_assoc() : null;
         $buyerStmt->close();
-        
-        $buyerFirstName = $buyerRow ? trim((string)$buyerRow['first_name']) : '';
-        $buyerLastName = $buyerRow ? trim((string)$buyerRow['last_name']) : '';
+
+        $buyerFirstName = $buyerRow ? trim((string) $buyerRow['first_name']) : '';
+        $buyerLastName = $buyerRow ? trim((string) $buyerRow['last_name']) : '';
         $buyerDisplayName = '';
         if ($buyerFirstName !== '' && $buyerLastName !== '') {
             $buyerDisplayName = $buyerFirstName . ' ' . $buyerLastName;
         } else {
             $buyerDisplayName = 'User ' . $buyerId;
         }
-        
+
         $actionText = $action === 'accept' ? 'accepted' : 'denied';
         $messageContent = $buyerDisplayName . ' has ' . $actionText . ' the scheduled purchase.';
-        
+
         // Get conversation details
         $convStmt = $conn->prepare('SELECT user1_id, user2_id FROM conversations WHERE conv_id = ? LIMIT 1');
         $convStmt->bind_param('i', $conversationId);
@@ -283,11 +283,11 @@ try {
         $convRes = $convStmt->get_result();
         $convRow = $convRes ? $convRes->fetch_assoc() : null;
         $convStmt->close();
-        
+
         if ($convRow) {
             $msgSenderId = $buyerId;
-            $msgReceiverId = ($convRow['user1_id'] == $buyerId) ? (int)$convRow['user2_id'] : (int)$convRow['user1_id'];
-            
+            $msgReceiverId = ($convRow['user1_id'] == $buyerId) ? (int) $convRow['user2_id'] : (int) $convRow['user1_id'];
+
             // Get names for message
             $nameStmt = $conn->prepare('SELECT user_id, first_name, last_name FROM user_accounts WHERE user_id IN (?, ?)');
             $nameStmt->bind_param('ii', $msgSenderId, $msgReceiverId);
@@ -295,26 +295,26 @@ try {
             $nameRes = $nameStmt->get_result();
             $names = [];
             while ($nameRow = $nameRes->fetch_assoc()) {
-                $id = (int)$nameRow['user_id'];
-                $full = trim((string)$nameRow['first_name'] . ' ' . (string)$nameRow['last_name']);
+                $id = (int) $nameRow['user_id'];
+                $full = trim((string) $nameRow['first_name'] . ' ' . (string) $nameRow['last_name']);
                 $names[$id] = $full !== '' ? $full : ('User ' . $id);
             }
             $nameStmt->close();
-            
+
             $senderName = $names[$msgSenderId] ?? ('User ' . $msgSenderId);
             $receiverName = $names[$msgReceiverId] ?? ('User ' . $msgReceiverId);
-            
+
             $metadata = json_encode([
                 'type' => $action === 'accept' ? 'schedule_accepted' : 'schedule_denied',
                 'request_id' => $requestId,
             ], JSON_UNESCAPED_SLASHES);
-            
+
             $msgStmt = $conn->prepare('INSERT INTO messages (conv_id, sender_id, receiver_id, sender_fname, receiver_fname, content, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)');
             $msgStmt->bind_param('iiissss', $conversationId, $msgSenderId, $msgReceiverId, $senderName, $receiverName, $messageContent, $metadata);
             $msgStmt->execute();
             $msgId = $msgStmt->insert_id;
             $msgStmt->close();
-            
+
             // Update unread count
             $updateStmt = $conn->prepare('UPDATE conversation_participants SET unread_count = unread_count + 1, first_unread_msg_id = CASE WHEN first_unread_msg_id IS NULL OR first_unread_msg_id = 0 THEN ? ELSE first_unread_msg_id END WHERE conv_id = ? AND user_id = ?');
             $updateStmt->bind_param('iii', $msgId, $conversationId, $msgReceiverId);
@@ -338,15 +338,15 @@ try {
         'data' => [
             'request_id' => $requestId,
             'status' => $nextStatus,
-            'verification_code' => (string)$row['verification_code'],
-            'seller_user_id' => (int)$row['seller_user_id'],
+            'verification_code' => (string) $row['verification_code'],
+            'seller_user_id' => (int) $row['seller_user_id'],
             'buyer_user_id' => $buyerId,
-            'inventory_product_id' => (int)$row['inventory_product_id'],
-            'meet_location' => (string)$row['meet_location'],
+            'inventory_product_id' => (int) $row['inventory_product_id'],
+            'meet_location' => (string) $row['meet_location'],
             'meeting_at' => $meetingAtIso,
             'buyer_response_at' => $responseAtIso,
             'item' => [
-                'title' => (string)$row['item_title'],
+                'title' => (string) $row['item_title'],
             ],
         ],
     ];

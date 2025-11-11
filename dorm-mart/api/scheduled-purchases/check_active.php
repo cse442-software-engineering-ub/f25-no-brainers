@@ -33,7 +33,7 @@ try {
         exit;
     }
 
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
+    $productId = isset($payload['product_id']) ? (int) $payload['product_id'] : 0;
 
     if ($productId <= 0) {
         http_response_code(400);
@@ -61,7 +61,7 @@ try {
     $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
     $checkStmt->close();
 
-    $hasActive = $checkRow && (int)$checkRow['cnt'] > 0;
+    $hasActive = $checkRow && (int) $checkRow['cnt'] > 0;
 
     echo json_encode([
         'success' => true,

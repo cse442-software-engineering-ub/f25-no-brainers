@@ -57,7 +57,7 @@ function check_forgot_password_rate_limit(string $email): array
     $stmt->execute();
     $result = $stmt->get_result();
     $row = $result->fetch_assoc();
-    $minutesPassed = (int)$row['minutes_passed'];
+    $minutesPassed = (int) $row['minutes_passed'];
     $stmt->close();
     $conn->close();
 

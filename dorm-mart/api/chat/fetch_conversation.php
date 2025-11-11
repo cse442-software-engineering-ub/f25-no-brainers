@@ -18,7 +18,7 @@ $conn = db();
 
 session_start(); // read the PHP session cookie to identify the caller
 
-$userId = (int)($_SESSION['user_id'] ?? 0);
+$userId = (int) ($_SESSION['user_id'] ?? 0);
 if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Not authenticated']);
@@ -27,7 +27,7 @@ if ($userId <= 0) {
 
 // --- input: conv_id must come from the query string ---
 // e.g. GET /api/read_chat.php?conv_id=123
-$convId = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : 0;
+$convId = isset($_GET['conv_id']) ? (int) $_GET['conv_id'] : 0;
 if ($convId <= 0) {
     http_response_code(400);
     echo json_encode(['success' => false, 'error' => 'conv_id is required']);
@@ -53,7 +53,7 @@ while ($row = $res->fetch_assoc()) {
     // Enrich schedule_request messages with current scheduled purchase status
     $metadata = json_decode($row['metadata'] ?? '{}', true);
     if (isset($metadata['type']) && $metadata['type'] === 'schedule_request' && isset($metadata['request_id'])) {
-        $requestId = (int)$metadata['request_id'];
+        $requestId = (int) $metadata['request_id'];
         // Fetch current status and buyer_response_at from scheduled_purchase_requests
         $statusStmt = $conn->prepare('SELECT status, buyer_response_at FROM scheduled_purchase_requests WHERE request_id = ? LIMIT 1');
         if ($statusStmt) {
@@ -63,7 +63,7 @@ while ($row = $res->fetch_assoc()) {
             if ($statusRes && $statusRes->num_rows > 0) {
                 $statusRow = $statusRes->fetch_assoc();
                 // Add status and buyer_response_at to metadata
-                $metadata['scheduled_purchase_status'] = (string)$statusRow['status'];
+                $metadata['scheduled_purchase_status'] = (string) $statusRow['status'];
                 if (!empty($statusRow['buyer_response_at'])) {
                     $dt = date_create($statusRow['buyer_response_at'], new DateTimeZone('UTC'));
                     if ($dt) {
@@ -93,7 +93,7 @@ $stmt->close();
 
 // --- done ---
 echo json_encode([
-    'success'  => true,
-    'conv_id'  => $convId,
+    'success' => true,
+    'conv_id' => $convId,
     'messages' => $messages
 ]);

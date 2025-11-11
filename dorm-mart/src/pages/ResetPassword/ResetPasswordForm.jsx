@@ -12,16 +12,30 @@ const hasSpecial = (s) => /[^A-Za-z0-9]/.test(s);
 function RequirementRow({ ok, text }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="inline-flex h-2.5 w-2.5 rounded-full" style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }} />
+      <span
+        className="inline-flex h-2.5 w-2.5 rounded-full"
+        style={{ backgroundColor: ok ? "#22c55e" : "#ef4444" }}
+      />
       <span className={ok ? "text-green-700" : "text-red-700"}>{text}</span>
     </div>
   );
 }
 
-function Field({ id, label, type = "password", value, onChange, placeholder, disabled = false }) {
+function Field({
+  id,
+  label,
+  type = "password",
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+}) {
   return (
     <div className="mb-6">
-      <label htmlFor={id} className="mb-2 block text-base font-medium text-slate-700">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-base font-medium text-slate-700"
+      >
         {label}
       </label>
       <input
@@ -31,10 +45,11 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
         placeholder={placeholder}
         onChange={onChange}
         disabled={disabled}
-        className={`h-11 w-full rounded-xl border px-4 text-slate-900 outline-none focus:ring-2 ${disabled
-            ? 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed'
-            : 'border-slate-300 bg-slate-100 focus:bg-white'
-          }`}
+        className={`h-11 w-full rounded-xl border px-4 text-slate-900 outline-none focus:ring-2 ${
+          disabled
+            ? "border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed"
+            : "border-slate-300 bg-slate-100 focus:bg-white"
+        }`}
         style={{ focusRingColor: NAV_BLUE }}
       />
     </div>
@@ -44,7 +59,7 @@ function Field({ id, label, type = "password", value, onChange, placeholder, dis
 function ResetPasswordForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const token = searchParams.get("token");
 
   // Form state
   const [newPassword, setNewPassword] = useState("");
@@ -74,7 +89,8 @@ function ResetPasswordForm() {
 
   const enforceMax = (setter) => (e) => {
     const v = e.target.value;
-    if (v.length > MAX_LEN) alert("Entered password is too long. Maximum length is 64 characters.");
+    if (v.length > MAX_LEN)
+      alert("Entered password is too long. Maximum length is 64 characters.");
     setter(v);
   };
 
@@ -82,26 +98,30 @@ function ResetPasswordForm() {
   useEffect(() => {
     // Handle missing token
     if (!token) {
-      navigate('/login?error=invalid_reset_link', { replace: true });
+      navigate("/login?error=invalid_reset_link", { replace: true });
       return;
     }
 
     // Validate token with backend
     const validateToken = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`);
+        const response = await fetch(
+          `${
+            process.env.REACT_APP_API_BASE
+          }/auth/validate-reset-token.php?token=${encodeURIComponent(token)}`
+        );
         const data = await response.json();
-        
+
         if (data.success && data.valid) {
           setIsTokenValid(true);
         } else {
           setIsTokenValid(false);
-          setTokenError(data.message || 'Invalid or expired reset token');
+          setTokenError(data.message || "Invalid or expired reset token");
         }
       } catch (error) {
-        console.error('Token validation error:', error);
+        console.error("Token validation error:", error);
         setIsTokenValid(false);
-        setTokenError('Failed to validate reset token');
+        setTokenError("Failed to validate reset token");
       } finally {
         setIsVerifyingToken(false);
       }
@@ -169,45 +189,54 @@ function ResetPasswordForm() {
 
     try {
       // Call the reset password API
-      const response = await fetch(`${process.env.REACT_APP_API_BASE}/auth/reset-password.php`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: token,
-          newPassword: newPassword
-        })
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE}/auth/reset-password.php`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            newPassword: newPassword,
+          }),
+        }
+      );
 
       const data = await response.json();
 
       if (data.success) {
         // Password reset successful - redirect to login
-        navigate('/login?message=password_reset_success', { replace: true });
+        navigate("/login?message=password_reset_success", { replace: true });
       } else {
         // Handle API errors
-        setSubmitError(data.error || 'Failed to reset password');
+        setSubmitError(data.error || "Failed to reset password");
       }
     } catch (error) {
-      console.error('Password reset error:', error);
-      setSubmitError('Network error. Please try again.');
+      console.error("Password reset error:", error);
+      setSubmitError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#2563EB' }}>
+    <div
+      className="min-h-screen flex items-center justify-center p-4"
+      style={{ backgroundColor: "#2563EB" }}
+    >
       <div className="w-full max-w-4xl mx-auto">
         <div className="bg-white rounded-xl shadow-2xl p-4 sm:p-8 min-h-[600px] flex flex-col">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 gap-4">
-            <h1 className="text-xl sm:text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+            <h1
+              className="text-xl sm:text-2xl font-serif font-semibold"
+              style={{ color: NAV_BLUE }}
+            >
               Reset Password
             </h1>
             <button
               type="button"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate("/login")}
               className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 self-start sm:self-auto"
               style={{ color: NAV_BLUE }}
               aria-label="Go to login"
@@ -225,7 +254,9 @@ function ResetPasswordForm() {
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm text-blue-700">Verifying reset link...</p>
+                      <p className="text-sm text-blue-700">
+                        Verifying reset link...
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -235,24 +266,34 @@ function ResetPasswordForm() {
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      <svg
+                        className="h-5 w-5 text-red-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <h3 className="text-sm font-medium text-red-800">Reset Link Expired</h3>
+                      <h3 className="text-sm font-medium text-red-800">
+                        Reset Link Expired
+                      </h3>
                       <p className="mt-1 text-sm text-red-700">{tokenError}</p>
                     </div>
                   </div>
                   <div className="mt-4">
                     <button
-                      onClick={() => navigate('/forgot-password')}
+                      onClick={() => navigate("/forgot-password")}
                       className="text-sm bg-red-100 hover:bg-red-200 text-red-800 px-3 py-2 rounded-md transition-colors"
                     >
                       Request New Reset Link
                     </button>
                     <button
-                      onClick={() => navigate('/login')}
+                      onClick={() => navigate("/login")}
                       className="ml-3 text-sm bg-gray-100 hover:bg-gray-200 text-gray-800 px-3 py-2 rounded-md transition-colors"
                     >
                       Back to Login
@@ -266,8 +307,16 @@ function ResetPasswordForm() {
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      <svg
+                        className="h-5 w-5 text-red-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div className="ml-3">
@@ -282,12 +331,22 @@ function ResetPasswordForm() {
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="h-5 w-5 text-yellow-400"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </div>
                     <div className="ml-3">
-                      <p className="text-sm text-yellow-700">{passwordMismatchError}</p>
+                      <p className="text-sm text-yellow-700">
+                        {passwordMismatchError}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -317,21 +376,43 @@ function ResetPasswordForm() {
                 className="mt-6 h-12 w-full sm:w-48 rounded-xl text-white shadow disabled:opacity-50 disabled:cursor-not-allowed text-lg font-medium"
                 style={{ backgroundColor: NAV_BLUE }}
               >
-                {isLoading ? 'Resetting...' : isVerifyingToken ? 'Verifying...' : 'Reset Password'}
+                {isLoading
+                  ? "Resetting..."
+                  : isVerifyingToken
+                  ? "Verifying..."
+                  : "Reset Password"}
               </button>
             </section>
 
             <section className="rounded-lg border border-slate-200 p-4 sm:p-6 flex flex-col justify-center">
-              <h2 className="mb-4 text-lg sm:text-xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
+              <h2
+                className="mb-4 text-lg sm:text-xl font-serif font-semibold"
+                style={{ color: NAV_BLUE }}
+              >
                 Password Requirements:
               </h2>
               <div className="flex flex-col gap-3">
-                <RequirementRow ok={policy.lower} text="At least 1 lowercase character" />
-                <RequirementRow ok={policy.upper} text="At least 1 uppercase character" />
-                <RequirementRow ok={policy.minLen} text="At least 8 characters" />
-                <RequirementRow ok={policy.special} text="At least 1 special character" />
+                <RequirementRow
+                  ok={policy.lower}
+                  text="At least 1 lowercase character"
+                />
+                <RequirementRow
+                  ok={policy.upper}
+                  text="At least 1 uppercase character"
+                />
+                <RequirementRow
+                  ok={policy.minLen}
+                  text="At least 8 characters"
+                />
+                <RequirementRow
+                  ok={policy.special}
+                  text="At least 1 special character"
+                />
                 <RequirementRow ok={policy.digit} text="At least 1 digit" />
-                <RequirementRow ok={policy.notTooLong} text="No more than 64 characters" />
+                <RequirementRow
+                  ok={policy.notTooLong}
+                  text="No more than 64 characters"
+                />
               </div>
             </section>
           </div>

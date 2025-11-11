@@ -20,7 +20,7 @@ try {
     if (!file_exists($filePath)) {
         http_response_code(404);
         echo json_encode([
-            'ok'    => false,
+            'ok' => false,
             'error' => 'categories.json file not found'
         ]);
         exit;
@@ -36,7 +36,7 @@ try {
         throw new RuntimeException('Invalid JSON format in categories.json. Expected an array.');
     }
     // Sort alphabetically (A-Z) by the first letter of each element
-    usort($data, function($a, $b) {
+    usort($data, function ($a, $b) {
         return strcasecmp($a[0], $b[0]); // Compare first character case-insensitively
     });
 
@@ -46,7 +46,7 @@ try {
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
-        'ok'    => false,
+        'ok' => false,
         'error' => $e->getMessage()
     ]);
 }

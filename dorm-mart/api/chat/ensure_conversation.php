@@ -32,8 +32,8 @@ try {
         exit;
     }
 
-    $productId = isset($payload['product_id']) ? (int)$payload['product_id'] : 0;
-    $sellerId = isset($payload['seller_user_id']) ? (int)$payload['seller_user_id'] : 0;
+    $productId = isset($payload['product_id']) ? (int) $payload['product_id'] : 0;
+    $sellerId = isset($payload['seller_user_id']) ? (int) $payload['seller_user_id'] : 0;
 
     if ($productId <= 0 && $sellerId <= 0) {
         http_response_code(400);
@@ -63,7 +63,7 @@ try {
             exit;
         }
 
-        $sellerId = (int)$productRow['seller_id'];
+        $sellerId = (int) $productRow['seller_id'];
     }
 
     if ($sellerId <= 0) {
@@ -92,7 +92,7 @@ try {
         $lockRes = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        if (!$lockRes || (int)$lockRes['locked'] !== 1) {
+        if (!$lockRes || (int) $lockRes['locked'] !== 1) {
             throw new RuntimeException('Could not obtain lock');
         }
 
@@ -112,7 +112,7 @@ try {
 
         if ($conversationRow) {
             // Ensure conversation participants exist even for existing conversations
-            $convId = (int)$conversationRow['conv_id'];
+            $convId = (int) $conversationRow['conv_id'];
             $stmt = $conn->prepare('INSERT IGNORE INTO conversation_participants (conv_id, user_id, first_unread_msg_id, unread_count) VALUES (?, ?, 0, 0), (?, ?, 0, 0)');
             $stmt->bind_param('iiii', $convId, $orderedA, $convId, $orderedB);
             $stmt->execute();
@@ -133,8 +133,8 @@ try {
             ];
 
             while ($row = $namesRes->fetch_assoc()) {
-                $id = (int)$row['user_id'];
-                $full = trim((string)$row['first_name'] . ' ' . (string)$row['last_name']);
+                $id = (int) $row['user_id'];
+                $full = trim((string) $row['first_name'] . ' ' . (string) $row['last_name']);
                 if ($full !== '') {
                     $names[$id] = $full;
                 }
@@ -197,13 +197,13 @@ try {
 
     // Add product details to conversation row for consistency with fetch_conversations.php
     if ($productRow) {
-        $conversationRow['product_title'] = (string)($productRow['title'] ?? '');
-        $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int)$productRow['seller_id'] : null;
-        
+        $conversationRow['product_title'] = (string) ($productRow['title'] ?? '');
+        $conversationRow['product_seller_id'] = isset($productRow['seller_id']) ? (int) $productRow['seller_id'] : null;
+
         // Extract first image URL for product_image_url
         $firstImage = null;
         if (!empty($productRow['photos'])) {
-            $decoded = json_decode((string)$productRow['photos'], true);
+            $decoded = json_decode((string) $productRow['photos'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded)) {
                 $firstImage = $decoded[0];
             }
@@ -225,7 +225,7 @@ try {
     if ($productRow) {
         $firstImage = null;
         if (!empty($productRow['photos'])) {
-            $decoded = json_decode((string)$productRow['photos'], true);
+            $decoded = json_decode((string) $productRow['photos'], true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded) && count($decoded)) {
                 $firstImage = $decoded[0];
             }
@@ -243,8 +243,8 @@ try {
         }
 
         $productDetails = [
-            'product_id' => (int)$productRow['product_id'],
-            'title' => (string)($productRow['title'] ?? ''),
+            'product_id' => (int) $productRow['product_id'],
+            'title' => (string) ($productRow['title'] ?? ''),
             'image_url' => $firstImage,
         ];
     }
@@ -255,9 +255,9 @@ try {
         $namesStmt->execute();
         $namesRes = $namesStmt->get_result();
         while ($row = $namesRes->fetch_assoc()) {
-            $id = (int)$row['user_id'];
-            $first = trim((string)($row['first_name'] ?? ''));
-            $last = trim((string)($row['last_name'] ?? ''));
+            $id = (int) $row['user_id'];
+            $first = trim((string) ($row['first_name'] ?? ''));
+            $last = trim((string) ($row['last_name'] ?? ''));
             $full = trim($first . ' ' . $last);
             if ($id === $buyerId) {
                 $buyerFirst = $first;
@@ -273,7 +273,7 @@ try {
         $namesStmt->close();
     }
 
-    $convId = (int)$conversationRow['conv_id'];
+    $convId = (int) $conversationRow['conv_id'];
     $existingMessageCount = 0;
     $countStmt = $conn->prepare('SELECT COUNT(*) AS cnt FROM messages WHERE conv_id = ? LIMIT 1');
     if ($countStmt) {
@@ -283,7 +283,7 @@ try {
         $cntRow = $cntRes ? $cntRes->fetch_assoc() : null;
         $countStmt->close();
         if ($cntRow) {
-            $existingMessageCount = (int)$cntRow['cnt'];
+            $existingMessageCount = (int) $cntRow['cnt'];
         }
     }
 
@@ -328,7 +328,7 @@ try {
 
             $createdIso = gmdate('Y-m-d\TH:i:s\Z');
             $autoMessage = [
-                'message_id' => (int)$autoMsgId,
+                'message_id' => (int) $autoMsgId,
                 'conv_id' => $convId,
                 'sender_id' => $buyerId,
                 'receiver_id' => $sellerId,

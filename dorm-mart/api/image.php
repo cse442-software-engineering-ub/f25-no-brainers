@@ -16,9 +16,10 @@ if ($IMAGE_DIR === false) {
     exit('Image directory not found');
 }
 
-function stream_image(string $path): void {
+function stream_image(string $path): void
+{
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime  = finfo_file($finfo, $path);
+    $mime = finfo_file($finfo, $path);
     finfo_close($finfo);
 
     header('Content-Type: ' . $mime);

@@ -41,8 +41,8 @@ try {
         LIMIT 1
     ");
     if (!$stmt) {
-    throw new Exception("SQL prepare failed: " . $mysqli->error);
-}
+        throw new Exception("SQL prepare failed: " . $mysqli->error);
+    }
     $stmt->bind_param('i', $userId);
     $stmt->execute();
     $res = $stmt->get_result();
@@ -61,13 +61,16 @@ try {
     }
 
     $cats = [];
-    $c1 = trim((string)($row['interested_category_1'] ?? ''));
-    $c2 = trim((string)($row['interested_category_2'] ?? ''));
-    $c3 = trim((string)($row['interested_category_3'] ?? ''));
+    $c1 = trim((string) ($row['interested_category_1'] ?? ''));
+    $c2 = trim((string) ($row['interested_category_2'] ?? ''));
+    $c3 = trim((string) ($row['interested_category_3'] ?? ''));
 
-    if ($c1 !== '') $cats[] = $c1;
-    if ($c2 !== '' && $c2 !== $c1) $cats[] = $c2;
-    if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2) $cats[] = $c3;
+    if ($c1 !== '')
+        $cats[] = $c1;
+    if ($c2 !== '' && $c2 !== $c1)
+        $cats[] = $c2;
+    if ($c3 !== '' && $c3 !== $c1 && $c3 !== $c2)
+        $cats[] = $c3;
 
     $cats = array_slice($cats, 0, 3);
 

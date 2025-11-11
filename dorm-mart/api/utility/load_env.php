@@ -1,6 +1,7 @@
 <?php
 
-function load_env(): void {
+function load_env(): void
+{
     // dorm-mart/
     $root = dirname(__DIR__, 2);
     // load whichever exists
@@ -30,10 +31,11 @@ function load_env(): void {
     foreach ($lines as $line) {
         $line = trim($line);
         // skipping comments or empty lines
-        if ($line === '' || str_starts_with($line, '#')) continue;
+        if ($line === '' || str_starts_with($line, '#'))
+            continue;
         // parse kvs
         [$key, $value] = array_pad(explode('=', $line, 2), 2, '');
         putenv(trim($key) . '=' . trim($value));
     }
-    
+
 }

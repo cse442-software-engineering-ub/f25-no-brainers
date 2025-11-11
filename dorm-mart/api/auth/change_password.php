@@ -28,18 +28,18 @@ $userId = require_login();
 /* Read body (JSON or form) - IMPORTANT: Do NOT HTML-encode passwords before hashing */
 $ct = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($ct, 'application/json') !== false) {
-  $raw  = file_get_contents('php://input');
+  $raw = file_get_contents('php://input');
   $data = json_decode($raw, true);
   if (!is_array($data)) {
     $data = [];
   }
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($data['currentPassword']) ? (string)$data['currentPassword'] : '';
-  $next    = isset($data['newPassword']) ? (string)$data['newPassword'] : '';
+  $current = isset($data['currentPassword']) ? (string) $data['currentPassword'] : '';
+  $next = isset($data['newPassword']) ? (string) $data['newPassword'] : '';
 } else {
   // Passwords must remain raw - they're hashed, not displayed
-  $current = isset($_POST['currentPassword']) ? (string)$_POST['currentPassword'] : '';
-  $next    = isset($_POST['newPassword']) ? (string)$_POST['newPassword'] : '';
+  $current = isset($_POST['currentPassword']) ? (string) $_POST['currentPassword'] : '';
+  $next = isset($_POST['newPassword']) ? (string) $_POST['newPassword'] : '';
 }
 
 /* Validate inputs */
@@ -91,9 +91,9 @@ try {
 
   $row = $res->fetch_assoc();
   $stmt->close();
-  
+
   // Block password change for testuser@buffalo.edu
-  $userEmail = (string)($row['email'] ?? '');
+  $userEmail = (string) ($row['email'] ?? '');
   $isTestUser = ($userEmail === 'testuser@buffalo.edu');
 
   /* Verify current password
@@ -101,7 +101,7 @@ try {
    * plaintext to the STORED salted hash. The salt and algorithm params are
    * embedded inside the hash created by password_hash() when the user/account
    * was created or changed. We never compare against or store plaintext. */
-  if (!password_verify($current, (string)$row['hash_pass'])) {
+  if (!password_verify($current, (string) $row['hash_pass'])) {
     $conn->close();
     http_response_code(401);
     echo json_encode(['ok' => false, 'error' => 'Invalid current password']);
@@ -109,7 +109,7 @@ try {
   }
 
   /* Optional: reject reuse of the same password */
-  if (password_verify($next, (string)$row['hash_pass'])) {
+  if (password_verify($next, (string) $row['hash_pass'])) {
     $conn->close();
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'New password must differ from current']);
@@ -128,7 +128,7 @@ try {
    * SECURITY NOTE: password_hash() automatically generates a random SALT and
    * returns a salted bcrypt hash. Only the hash is stored in the DB. */
   $newHash = password_hash($next, PASSWORD_BCRYPT);
-  
+
   // ============================================================================
   // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
   // ============================================================================
@@ -145,10 +145,10 @@ try {
   // Clear auth_token cookie if your schema still has it (harmless if absent)
   if (isset($_COOKIE['auth_token'])) {
     setcookie('auth_token', '', [
-      'expires'  => time() - 3600,
-      'path'     => '/',
+      'expires' => time() - 3600,
+      'path' => '/',
       'httponly' => true,
-      'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+      'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
       'samesite' => 'Lax'
     ]);
   }

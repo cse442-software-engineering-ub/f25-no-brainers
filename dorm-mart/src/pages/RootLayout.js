@@ -12,7 +12,7 @@ function RootLayout() {
 
   useEffect(() => {
     const controller = new AbortController();
-    
+
     const checkAuth = async () => {
       try {
         await fetch_me(controller.signal);
@@ -22,7 +22,7 @@ function RootLayout() {
         loadUserTheme();
       } catch (error) {
         // AbortError means component unmounted, don't update state or navigate
-        if (error.name === 'AbortError') {
+        if (error.name === "AbortError") {
           return;
         }
         // Not authenticated, redirect to login
@@ -32,7 +32,7 @@ function RootLayout() {
     };
 
     checkAuth();
-    
+
     // Cleanup: abort fetch if component unmounts
     return () => {
       controller.abort();
