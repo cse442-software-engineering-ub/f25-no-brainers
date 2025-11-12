@@ -26,6 +26,7 @@ import MarkCompletedPage from "./pages/SellerDashboard/MarkCompletedPage.jsx";
 import ReportIssuePage from "./pages/SellerDashboard/ReportIssuePage.jsx";
 import ViewProduct from "./itemDetails/viewProduct.jsx";
 import SearchResults from "./pages/search/searchResults.jsx";
+import WishlistPage from "./pages/Wishlist/WishlistPage.jsx";
 // Chat
 import { ChatProvider } from "./context/ChatContext.js";
 import ChatPage from "./pages/Chat/ChatPage.jsx";
@@ -84,6 +85,11 @@ export const router = createHashRouter([
       {
         path: "chat",
         children: [{ index: true, element: <ChatPage /> }],
+      },
+      // Wishlist
+      {
+        path: "wishlist",
+        element: <WishlistPage />,
       },
       // Seller Dashboard
       {

@@ -56,6 +56,7 @@ export default function LandingPage() {
   const [interests, setInterests] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [wishlistedIds, setWishlistedIds] = useState(new Set());
   const [loadingUser, setLoadingUser] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
   const [errorUser, setErrorUser] = useState(false);
@@ -215,6 +216,28 @@ export default function LandingPage() {
         if (Array.isArray(data)) setAllCategories(data);
       } catch (e) {
         // ignore
+      }
+    })();
+    return () => controller.abort();
+  }, []);
+
+  // fetch wishlist items to determine which items are wishlisted
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const r = await fetch(`${API_BASE}/wishlist/get_wishlist.php`, {
+          signal: controller.signal,
+          credentials: "include",
+        });
+        if (!r.ok) return;
+        const json = await r.json();
+        if (json.success && Array.isArray(json.data)) {
+          const ids = new Set(json.data.map((item) => item.product_id));
+          setWishlistedIds(ids);
+        }
+      } catch (e) {
+        // ignore - wishlist status is optional
       }
     })();
     return () => controller.abort();
@@ -515,6 +538,7 @@ export default function LandingPage() {
                                   image={item.img || undefined}
                                   status={item.status}
                                   seller={item.seller}
+                                  isWishlisted={wishlistedIds.has(item.id)}
                                 />
                               </div>
                             ))
@@ -555,6 +579,7 @@ export default function LandingPage() {
                     image={item.img || undefined}
                     status={item.status}
                     seller={item.seller}
+                    isWishlisted={wishlistedIds.has(item.id)}
                   />
                 ))}
               </div>
