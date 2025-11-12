@@ -167,7 +167,7 @@ function LoginPage() {
         // Navigate to the main app
         navigate("/app");
       } else {
-        // Show error from backend
+        // Show error from backend (includes rate limiting messages)
         setError(data.error || "Login failed");
       }
     } catch (error) {
@@ -295,7 +295,7 @@ function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full sm:w-1/2 md:w-1/3 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto disabled:hover:scale-100"
+                  className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 disabled:cursor-not-allowed text-white py-2 sm:py-3 rounded-lg flex items-center justify-center space-x-2 transition-all duration-200 hover:scale-105 hover:shadow-lg font-medium mx-auto disabled:hover:scale-100"
                 >
                   <span>{loading ? "Logging in..." : "Login"}</span>
                   {!loading && (

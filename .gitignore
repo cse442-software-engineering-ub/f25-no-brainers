@@ -48,3 +48,10 @@ deploy.bat
 cookies.txt
 cookies_buyer.txt
 cookies_seller.txt
+
+# Test scripts
+test_rate_limit.sh
+test_rate_limit.ps1
+
+# Lockout data
+dorm-mart/api/utility/lockouts/locked_sessions.json

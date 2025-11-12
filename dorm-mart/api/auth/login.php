@@ -91,30 +91,25 @@ if (!preg_match('/^[^@\s]+@buffalo\.edu$/', $email)) {
 }
 
 try {
-    // CRITICAL: Check session rate limiting BEFORE email check
-    // This blocks all attempts from a locked session regardless of email
-    // Session-based rate limiting prevents email enumeration and account lockout attacks
-    // Note: Can be bypassed by clearing cookies, but stops casual brute force attacks
+    // Check session rate limiting before email validation to prevent brute force attacks
     $sessionRateLimitCheck = check_session_rate_limit();
-    if ($sessionRateLimitCheck['blocked']) {
-        $remainingMinutes = get_remaining_lockout_minutes($sessionRateLimitCheck['lockout_until']);
+    
+    if (isset($sessionRateLimitCheck['blocked']) && $sessionRateLimitCheck['blocked']) {
+        $lockoutUntil = $sessionRateLimitCheck['lockout_until'] ?? null;
+        $remainingMinutes = get_remaining_lockout_minutes($lockoutUntil);
         http_response_code(429);
-        echo json_encode(['ok' => false, 'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."]);
+        echo json_encode([
+            'ok' => false, 
+            'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."
+        ]);
         exit;
     }
 
     $conn = db();
 
-    // ============================================================================
-    // SQL INJECTION PROTECTION: Prepared Statement with Parameter Binding
-    // ============================================================================
-    // Using mysqli prepared statements with parameter binding (bind_param) to prevent SQL injection.
-    // The '?' placeholder ensures user input ($email) is treated as data, not executable SQL.
-    // Even if malicious SQL is in $email, it cannot execute because it's bound as a string parameter.
-    // This is the industry-standard defense against SQL injection attacks.
-    // ============================================================================
+    // Use prepared statement to prevent SQL injection
     $stmt = $conn->prepare('SELECT user_id, hash_pass FROM user_accounts WHERE email = ? LIMIT 1');
-    $stmt->bind_param('s', $email);  // 's' = string type, $email is safely bound as parameter
+    $stmt->bind_param('s', $email);
     $stmt->execute();
     $res = $stmt->get_result();
 
@@ -122,31 +117,54 @@ try {
         $stmt->close();
         $conn->close();
 
-        // Record failed attempt for non-existent user (but don't reveal this)
-        // Always return same error message to prevent email enumeration
-        // Session-based rate limiting prevents account lockout attacks
-        record_session_failed_attempt();
+        // Record failed attempt (return same error message to prevent email enumeration)
+        $lockoutInfo = record_session_failed_attempt();
+        
+        // Check if we just hit the lockout threshold
+        if ($lockoutInfo && isset($lockoutInfo['blocked']) && $lockoutInfo['blocked']) {
+            $remainingMinutes = get_remaining_lockout_minutes($lockoutInfo['lockout_until']);
+            http_response_code(429);
+            echo json_encode([
+                'ok' => false, 
+                'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."
+            ]);
+            exit;
+        }
 
         http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
-        exit;
+    echo json_encode([
+        'ok' => false, 
+        'error' => 'Invalid credentials'
+    ]);
+    exit;
     }
     $row = $res->fetch_assoc();
     $stmt->close();
 
-    // SECURITY NOTE: password_verify() safely checks the submitted
-    // plaintext against the STORED salted hash from password_hash(). The salt is
-    // inside the hash; we never store or handle it separately.
+    // Verify password using bcrypt hash
     if (!password_verify($password, (string) $row['hash_pass'])) {
         $conn->close();
 
-        // Record failed attempt (always return same error message to prevent email enumeration)
-        // Session-based rate limiting prevents account lockout attacks
-        record_session_failed_attempt();
+        // Record failed attempt
+        $lockoutInfo = record_session_failed_attempt();
+        
+        // Check if we just hit the lockout threshold
+        if ($lockoutInfo && isset($lockoutInfo['blocked']) && $lockoutInfo['blocked']) {
+            $remainingMinutes = get_remaining_lockout_minutes($lockoutInfo['lockout_until']);
+            http_response_code(429);
+            echo json_encode([
+                'ok' => false, 
+                'error' => "Too many failed attempts. Please try again in {$remainingMinutes} minutes."
+            ]);
+            exit;
+        }
 
         http_response_code(401);
-        echo json_encode(['ok' => false, 'error' => 'Invalid credentials']);
-        exit;
+    echo json_encode([
+        'ok' => false, 
+        'error' => 'Invalid credentials'
+    ]);
+    exit;
     }
 
     $userId = (int) $row['user_id'];
@@ -169,11 +187,15 @@ try {
     regenerate_session_on_login();
     $_SESSION['user_id'] = $userId;
 
+    // Reset rate limiting on successful login
+    reset_session_rate_limit();
+
     // Persist across restarts
     issue_remember_cookie($userId);
 
     echo json_encode(['ok' => true, 'theme' => $theme]);
 } catch (Throwable $e) {
     http_response_code(500);
+    error_log("Login error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
     echo json_encode(['ok' => false, 'error' => 'Server error']);
 }

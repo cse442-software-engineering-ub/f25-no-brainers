@@ -384,19 +384,30 @@ function get_remaining_lockout_minutes($lockoutUntil)
         return 0;
     }
 
-    // Use MySQL to calculate remaining time to avoid timezone issues
-    require_once __DIR__ . '/../database/db_connect.php';
-    $conn = db();
-    $stmt = $conn->prepare("SELECT TIMESTAMPDIFF(SECOND, NOW(), ?) as remaining_seconds");
-    $stmt->bind_param('s', $lockoutUntil);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $stmt->close();
-    $conn->close();
+    try {
+        // Handle both integer timestamp and datetime string formats
+        $lockoutTime = null;
+        if (is_numeric($lockoutUntil)) {
+            $lockoutTime = (int) $lockoutUntil;
+        } else {
+            $lockoutTime = strtotime($lockoutUntil);
+            if ($lockoutTime === false) {
+                return 0;
+            }
+        }
 
-    $remainingSeconds = (int) $row['remaining_seconds'];
-    return max(0, ceil($remainingSeconds / 60));
+        $currentTime = time();
+        $remainingSeconds = $lockoutTime - $currentTime;
+        
+        if ($remainingSeconds <= 0) {
+            return 0;
+        }
+
+        return max(0, ceil($remainingSeconds / 60));
+    } catch (Exception $e) {
+        // If calculation fails, return 0 to avoid breaking the login flow
+        return 0;
+    }
 }
 
 /**
@@ -413,136 +424,173 @@ function reset_all_lockouts()
 }
 
 /**
+ * Get lockout file path for storing locked-out session IDs
+ * @return string Path to lockout file
+ */
+function get_lockout_file_path()
+{
+    $lockoutDir = __DIR__ . '/../utility/lockouts';
+    if (!is_dir($lockoutDir)) {
+        mkdir($lockoutDir, 0755, true);
+    }
+    return $lockoutDir . '/locked_sessions.json';
+}
+
+/**
+ * Check if a session ID is currently locked out
+ * @param string $sessionId Session ID to check
+ * @return array|null Returns lockout info if locked out, null otherwise
+ */
+function check_session_lockout_file($sessionId)
+{
+    $lockoutFile = get_lockout_file_path();
+    
+    if (!file_exists($lockoutFile)) {
+        return null;
+    }
+    
+    $lockouts = json_decode(file_get_contents($lockoutFile), true) ?? [];
+    $currentTime = time();
+    $updatedLockouts = [];
+    $isLocked = false;
+    $lockoutUntil = null;
+    
+    foreach ($lockouts as $lockedSessionId => $expiryTime) {
+        if ($expiryTime > $currentTime) {
+            $updatedLockouts[$lockedSessionId] = $expiryTime;
+            if ($lockedSessionId === $sessionId) {
+                $isLocked = true;
+                $lockoutUntil = date('Y-m-d H:i:s', $expiryTime);
+            }
+        }
+    }
+    
+    if (count($updatedLockouts) !== count($lockouts)) {
+        file_put_contents($lockoutFile, json_encode($updatedLockouts, JSON_PRETTY_PRINT));
+    }
+    
+    return $isLocked ? ['blocked' => true, 'lockout_until' => $lockoutUntil] : null;
+}
+
+/**
+ * Store a session ID as locked out
+ * @param string $sessionId Session ID to lock out
+ * @param int $lockoutMinutes Lockout duration in minutes
+ */
+function store_session_lockout($sessionId, $lockoutMinutes = 3)
+{
+    $lockoutFile = get_lockout_file_path();
+    $currentTime = time();
+    $lockouts = [];
+    
+    if (file_exists($lockoutFile)) {
+        $lockouts = json_decode(file_get_contents($lockoutFile), true) ?? [];
+        
+        // Auto-cleanup expired lockouts
+        foreach ($lockouts as $sid => $expiryTime) {
+            if ($expiryTime <= $currentTime) {
+                unset($lockouts[$sid]);
+            }
+        }
+    }
+    
+    $lockouts[$sessionId] = $currentTime + ($lockoutMinutes * 60);
+    file_put_contents($lockoutFile, json_encode($lockouts, JSON_PRETTY_PRINT));
+}
+
+/**
  * Check if session has exceeded rate limit
  * @param int $maxAttempts Maximum attempts before lockout (default: 5)
- * @param int $lockoutMinutes Lockout duration in minutes (default: 5)
+ * @param int $lockoutMinutes Lockout duration in minutes (default: 3)
  * @return array Rate limit status
  */
-function check_session_rate_limit($maxAttempts = 5, $lockoutMinutes = 5)
+function check_session_rate_limit($maxAttempts = 5, $lockoutMinutes = 3)
 {
     // Ensure session is started
     require_once __DIR__ . '/../auth/auth_handle.php';
     auth_boot_session();
 
-    // Initialize session variables if they don't exist
+    $sessionId = $_COOKIE[session_name()] ?? session_id();
+    
+    // Check lockout file first (source of truth)
+    $fileLockout = check_session_lockout_file($sessionId);
+    if ($fileLockout && $fileLockout['blocked']) {
+        return $fileLockout;
+    }
+
+    // Initialize session variables
     if (!isset($_SESSION['login_failed_attempts'])) {
         $_SESSION['login_failed_attempts'] = 0;
     }
     if (!isset($_SESSION['login_last_failed_attempt'])) {
         $_SESSION['login_last_failed_attempt'] = null;
     }
-    if (!isset($_SESSION['login_lockout_until'])) {
-        $_SESSION['login_lockout_until'] = null;
-    }
-
+    
     $attempts = (int) $_SESSION['login_failed_attempts'];
     $lastAttempt = $_SESSION['login_last_failed_attempt'];
-    $lockoutUntil = $_SESSION['login_lockout_until'];
-
-    // If no attempts, not blocked
+    
+    // If session has high attempts but no file lockout, lockouts were manually cleared - reset
+    if ($attempts >= $maxAttempts && !$fileLockout) {
+        $_SESSION['login_failed_attempts'] = 0;
+        $_SESSION['login_last_failed_attempt'] = null;
+        return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
+    }
+    
     if ($attempts === 0) {
         return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
     }
 
-    // DECAY SYSTEM: Reduce attempts by 1 if 10+ seconds have passed since last attempt
-    $decaySeconds = 10;
+    // Apply decay: reduce attempts by 1 if 10+ seconds have passed
     $currentTime = time();
-    $lastAttemptTime = $lastAttempt ? (int) $lastAttempt : 0;
-    $timeSinceLastAttempt = $currentTime - $lastAttemptTime;
+    $timeSinceLastAttempt = $currentTime - ($lastAttempt ? (int) $lastAttempt : 0);
 
-    // Apply decay: if 10+ seconds have passed, reduce by exactly 1 (not by time elapsed)
-    if ($timeSinceLastAttempt >= $decaySeconds && $attempts > 0) {
-        $newAttempts = max(0, $attempts - 1);
-
-        // Update session if attempts have decayed
-        if ($newAttempts !== $attempts) {
-            $_SESSION['login_failed_attempts'] = $newAttempts;
-            $attempts = $newAttempts;
-        }
+    if ($timeSinceLastAttempt >= 10 && $attempts > 0) {
+        $attempts = max(0, $attempts - 1);
+        $_SESSION['login_failed_attempts'] = $attempts;
     }
 
-    // Check if session is currently locked out (regardless of attempt count)
-    if ($lockoutUntil) {
-        $currentTime = time();
-        $lockoutExpiry = (int) $lockoutUntil;
-
-        if ($currentTime >= $lockoutExpiry) {
-            // Lockout has expired, clear it AND reset attempts
-            $_SESSION['login_failed_attempts'] = 0;
-            $_SESSION['login_last_failed_attempt'] = null;
-            $_SESSION['login_lockout_until'] = null;
-            return ['blocked' => false, 'attempts' => 0, 'lockout_until' => null];
-        }
-
-        // Still locked out
-        return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => date('Y-m-d H:i:s', $lockoutExpiry)];
-    }
-
-    // Check if we need to start a new lockout (5+ attempts)
+    // Failsafe: if at threshold, enforce lockout
     if ($attempts >= $maxAttempts) {
-        $currentTime = time();
         $lockoutExpiry = $currentTime + ($lockoutMinutes * 60);
         $lockoutUntilStr = date('Y-m-d H:i:s', $lockoutExpiry);
-
-        // Set lockout timestamp in session
-        $_SESSION['login_lockout_until'] = $lockoutExpiry;
-
+        store_session_lockout($sessionId, $lockoutMinutes);
         return ['blocked' => true, 'attempts' => $attempts, 'lockout_until' => $lockoutUntilStr];
     }
 
-    // Don't clear timestamps here - let them persist for lockout tracking
     return ['blocked' => false, 'attempts' => $attempts, 'lockout_until' => null];
 }
 
 /**
  * Record a failed login attempt for session-based rate limiting
+ * @return array|null Returns lockout info if lockout should be triggered, null otherwise
  */
 function record_session_failed_attempt()
 {
-    // Ensure session is started
     require_once __DIR__ . '/../auth/auth_handle.php';
     auth_boot_session();
 
-    // Initialize session variables if they don't exist
     if (!isset($_SESSION['login_failed_attempts'])) {
         $_SESSION['login_failed_attempts'] = 0;
     }
     if (!isset($_SESSION['login_last_failed_attempt'])) {
         $_SESSION['login_last_failed_attempt'] = null;
     }
-    if (!isset($_SESSION['login_lockout_until'])) {
-        $_SESSION['login_lockout_until'] = null;
-    }
 
-    $currentAttempts = (int) $_SESSION['login_failed_attempts'];
-    $lockoutUntil = $_SESSION['login_lockout_until'];
-
-    // Don't apply decay when recording new attempts - only when checking rate limits
-    // This ensures that new attempts are always recorded regardless of time gaps
-
-    // Now increment by 1
-    $newAttempts = $currentAttempts + 1;
-
-    // Check if we need to set lockout (5+ attempts)
-    $lockoutUntilValue = null;
-    if ($newAttempts >= 5) {
-        // Only set lockout if not already locked out
-        if (!$lockoutUntil) {
-            $currentTime = time();
-            $lockoutExpiry = $currentTime + (5 * 60); // 5 minutes
-            $lockoutUntilValue = $lockoutExpiry;
-        } else {
-            $lockoutUntilValue = (int) $lockoutUntil;
-        }
-    }
-
-    // Update session with new attempt count and timestamp
+    $newAttempts = (int) $_SESSION['login_failed_attempts'] + 1;
     $_SESSION['login_failed_attempts'] = $newAttempts;
     $_SESSION['login_last_failed_attempt'] = time();
 
-    if ($lockoutUntilValue) {
-        $_SESSION['login_lockout_until'] = $lockoutUntilValue;
+    // Enforce lockout after 5 attempts
+    if ($newAttempts >= 5) {
+        $sessionId = $_COOKIE[session_name()] ?? session_id();
+        store_session_lockout($sessionId, 3);
+        
+        $lockoutExpiry = time() + (3 * 60);
+        $lockoutUntilStr = date('Y-m-d H:i:s', $lockoutExpiry);
+        return ['blocked' => true, 'attempts' => $newAttempts, 'lockout_until' => $lockoutUntilStr];
     }
+    
+    return null;
 }
 
 /**
@@ -555,7 +603,33 @@ function reset_session_rate_limit()
 
     $_SESSION['login_failed_attempts'] = 0;
     $_SESSION['login_last_failed_attempt'] = null;
-    $_SESSION['login_lockout_until'] = null;
+    
+    $sessionId = $_COOKIE[session_name()] ?? session_id();
+    $lockoutFile = get_lockout_file_path();
+    
+    if (file_exists($lockoutFile)) {
+        $lockouts = json_decode(file_get_contents($lockoutFile), true) ?? [];
+        if (isset($lockouts[$sessionId])) {
+            unset($lockouts[$sessionId]);
+            file_put_contents($lockoutFile, json_encode($lockouts, JSON_PRETTY_PRINT));
+        }
+    }
+}
+
+/**
+ * Clear all lockouts (admin utility function)
+ * @return int Number of lockouts cleared
+ */
+function clear_all_lockouts()
+{
+    $lockoutFile = get_lockout_file_path();
+    if (file_exists($lockoutFile)) {
+        $lockouts = json_decode(file_get_contents($lockoutFile), true) ?? [];
+        $count = count($lockouts);
+        file_put_contents($lockoutFile, json_encode([], JSON_PRETTY_PRINT));
+        return $count;
+    }
+    return 0;
 }
 
 // ============================================================================
