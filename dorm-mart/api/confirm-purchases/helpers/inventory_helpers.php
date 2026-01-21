@@ -206,3 +206,7 @@ function auto_finalize_confirm_request(mysqli $conn, array $row): ?array
 
 
 
+
+
+
+

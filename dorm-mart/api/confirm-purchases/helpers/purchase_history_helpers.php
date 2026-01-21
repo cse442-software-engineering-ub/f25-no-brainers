@@ -74,3 +74,7 @@ function record_purchase_history(mysqli $conn, int $userId, int $productId, arra
 
 
 
+
+
+
+
