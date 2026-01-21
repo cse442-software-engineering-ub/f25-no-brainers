@@ -6,6 +6,16 @@
  * Reduces code duplication across API files.
  */
 
+// Suppress ALL PHP errors/warnings immediately (before any other code)
+@ini_set('display_errors', '0');
+@ini_set('log_errors', '1');
+error_reporting(0);
+
+// Start output buffering to catch any stray output
+if (!ob_get_level() && php_sapi_name() !== 'cli') {
+    @ob_start();
+}
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/security/security.php';
@@ -18,12 +28,9 @@ require_once __DIR__ . '/security/security.php';
  * @param mixed $data Additional error data (optional)
  */
 function send_json_error(int $code, string $message, $data = null): void {
-    // If there's buffered output with HTML errors, clear it to ensure clean JSON
+    // Clear any buffered output (but keep buffer open)
     if (ob_get_level() > 0) {
-        $buffer = ob_get_contents();
-        if ($buffer && (strpos($buffer, '<br') !== false || strpos($buffer, '<b>') !== false)) {
-            ob_clean();
-        }
+        ob_clean(); // Clear content, don't close buffer
     }
     
     http_response_code($code);
@@ -43,12 +50,9 @@ function send_json_error(int $code, string $message, $data = null): void {
  * @param int $code HTTP status code (default: 200)
  */
 function send_json_success($data, int $code = 200): void {
-    // If there's buffered output with HTML errors, clear it to ensure clean JSON
+    // Clear any buffered output (but keep buffer open)
     if (ob_get_level() > 0) {
-        $buffer = ob_get_contents();
-        if ($buffer && (strpos($buffer, '<br') !== false || strpos($buffer, '<b>') !== false)) {
-            ob_clean();
-        }
+        ob_clean(); // Clear content, don't close buffer
     }
     
     http_response_code($code);
@@ -197,6 +201,10 @@ function api_bootstrap($allowedMethods = ['GET', 'POST'], bool $requireAuth = fa
     if (!ob_get_level()) {
         ob_start();
     }
+    
+    // Suppress mysqli warnings/errors (prevents HTML error output)
+    // This MUST be set before any database operations, matching main branch pattern
+    mysqli_report(MYSQLI_REPORT_OFF);
     
     // Set security headers and CORS
     setSecurityHeaders();

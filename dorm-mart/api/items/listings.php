@@ -1,4 +1,14 @@
 <?php
+// Suppress ALL PHP errors/warnings immediately (before any other code)
+@ini_set('display_errors', '0');
+@ini_set('log_errors', '1');
+error_reporting(0);
+
+// Start output buffering to catch any stray output
+if (!ob_get_level()) {
+    @ob_start();
+}
+
 declare(strict_types=1);
 
 // dorm-mart/api/landingListings.php
