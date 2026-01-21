@@ -18,7 +18,16 @@ require_once __DIR__ . '/security/security.php';
  * @param mixed $data Additional error data (optional)
  */
 function send_json_error(int $code, string $message, $data = null): void {
+    // If there's buffered output with HTML errors, clear it to ensure clean JSON
+    if (ob_get_level() > 0) {
+        $buffer = ob_get_contents();
+        if ($buffer && (strpos($buffer, '<br') !== false || strpos($buffer, '<b>') !== false)) {
+            ob_clean();
+        }
+    }
+    
     http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['success' => false, 'error' => $message];
     if ($data !== null) {
         $response['data'] = $data;
@@ -34,7 +43,16 @@ function send_json_error(int $code, string $message, $data = null): void {
  * @param int $code HTTP status code (default: 200)
  */
 function send_json_success($data, int $code = 200): void {
+    // If there's buffered output with HTML errors, clear it to ensure clean JSON
+    if (ob_get_level() > 0) {
+        $buffer = ob_get_contents();
+        if ($buffer && (strpos($buffer, '<br') !== false || strpos($buffer, '<b>') !== false)) {
+            ob_clean();
+        }
+    }
+    
     http_response_code($code);
+    header('Content-Type: application/json; charset=utf-8');
     $response = ['success' => true];
     
     if ($data !== null) {
@@ -175,6 +193,11 @@ function validate_rating(array $input, string $key = 'rating', float $min = 0, f
  * @return array|null Returns ['userId' => int, 'conn' => mysqli] if requireAuth=true, null otherwise
  */
 function api_bootstrap($allowedMethods = ['GET', 'POST'], bool $requireAuth = false, bool $enforceHttps = false): ?array {
+    // Start output buffering if not already started to catch any stray output/errors
+    if (!ob_get_level()) {
+        ob_start();
+    }
+    
     // Set security headers and CORS
     setSecurityHeaders();
     setSecureCORS();

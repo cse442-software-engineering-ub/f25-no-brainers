@@ -5,7 +5,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/auth_handle.php';
 require_once __DIR__ . '/../database/db_connect.php';
-require_once __DIR__ . '/../security/security.php';
 
 // Bootstrap API with POST method (no auth required - this is the login endpoint)
 // Note: We need to handle session initialization manually for rate limiting
