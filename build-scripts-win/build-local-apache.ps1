@@ -62,6 +62,10 @@ Copy-Item -Path "$dormMartPath\migrations" -Destination $dormMartServePath -Recu
 Write-Host "Copying vendor folder..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\vendor" -Destination $dormMartServePath -Recurse -Force
 
+# Copy images folder
+Write-Host "Copying images folder..." -ForegroundColor Cyan
+Copy-Item -Path "$dormMartPath\images" -Destination $dormMartServePath -Recurse -Force
+
 # Copy .env.local file
 Write-Host "Copying .env.local file..." -ForegroundColor Cyan
 Copy-Item -Path "$dormMartPath\.env.local" -Destination $dormMartServePath -Force

@@ -1,7 +1,12 @@
 <?php
 declare(strict_types=1);
 
-// api/me.php
+// api/user/interests.php
+
+// Start output buffering early to catch any PHP errors/warnings
+if (!ob_get_level()) {
+    ob_start();
+}
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../database/db_helpers.php';

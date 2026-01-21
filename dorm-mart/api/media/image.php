@@ -10,7 +10,7 @@ require_once __DIR__ . '/../security/security.php';
 setSecurityHeaders();
 setSecureCORS();
 
-$IMAGE_DIR = realpath(__DIR__ . '/../images');
+$IMAGE_DIR = realpath(dirname(__DIR__, 2) . '/images');
 if ($IMAGE_DIR === false) {
     http_response_code(500);
     exit('Image directory not found');
@@ -48,7 +48,7 @@ if (isset($_GET['url']) && $_GET['url'] !== '') {
         $url = substr($url, 0, $qpos);
     }
 
-    $projectRoot = dirname(__DIR__);
+    $projectRoot = dirname(__DIR__, 2);
     $path = null;
 
     // Handle /images/ paths (current standard)
