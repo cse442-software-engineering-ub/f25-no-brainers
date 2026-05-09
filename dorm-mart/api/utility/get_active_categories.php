@@ -1,20 +1,12 @@
 <?php
 declare(strict_types=1);
 
-// Include security utilities for escapeHtml function
 require_once __DIR__ . '/../security/security.php';
-
-// CORS headers to allow frontend access
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../helpers/response.php';
+init_security();
 
 // Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+allow_options_request(200);
 
 try {
     require_once __DIR__ . '/../database/db_connect.php';
@@ -60,19 +52,14 @@ try {
     sort($categories, SORT_STRING | SORT_FLAG_CASE);
     
     // XSS PROTECTION: Escape user-generated content before returning in JSON
-    $escapedCategories = array_map('escapeHtml', $categories);
+    $escapedCategories = array_map('escape_html', $categories);
     
     $conn->close();
     
     // Return the array of active categories
-    echo json_encode($escapedCategories);
+    json_response($escapedCategories);
 
 } catch (Throwable $e) {
-    http_response_code(500);
-    // XSS PROTECTION: Escape exception message to prevent XSS
-    echo json_encode([
-        'ok'    => false,
-        'error' => escapeHtml($e->getMessage())
-    ]);
+    error_log('get_active_categories error: ' . $e->getMessage());
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }
-

@@ -1,45 +1,48 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../../utils/apiConfig";
 
 function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
   const navigate = useNavigate();
   const [hasRating, setHasRating] = useState(false);
   const [isLoadingRating, setIsLoadingRating] = useState(true);
 
-  // Fetch buyer rating status on mount
+  const fetchRatingStatus = useCallback(async () => {
+    if (!productId) return;
+    try {
+      const response = await fetch(
+        `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
+        { method: "GET", credentials: "include" },
+      );
+      if (response.ok) {
+        const result = await response.json();
+        setHasRating(!!(result.success && result.has_rating));
+      }
+    } catch (error) {
+      console.error("Error fetching buyer rating status:", error);
+    } finally {
+      setIsLoadingRating(false);
+    }
+  }, [productId]);
+
   useEffect(() => {
     if (!productId) {
       setIsLoadingRating(false);
       return;
     }
+    fetchRatingStatus();
+  }, [productId, fetchRatingStatus]);
 
-    const fetchRatingStatus = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
-          {
-            method: "GET",
-            credentials: "include",
-          }
-        );
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.has_rating) {
-            setHasRating(true);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching buyer rating status:", error);
-      } finally {
-        setIsLoadingRating(false);
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && productId) {
+        fetchRatingStatus();
       }
     };
-
-    fetchRatingStatus();
-  }, [productId]);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [productId, fetchRatingStatus]);
 
   const handleRatingClick = () => {
     if (productId && buyerId) {
@@ -85,12 +88,32 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
         <div className="p-4">
           <div className="flex items-start gap-2 min-w-0">
             {hasRating ? (
-              <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className={iconClasses}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             ) : (
-              <svg className={iconClasses} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className={iconClasses}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             )}
             <div className="flex-1 min-w-0 max-w-full overflow-hidden">
@@ -102,10 +125,7 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
                   ? `Thank you for rating the buyer for ${productTitle || "this item"}! You can view or edit your rating anytime.`
                   : `Your purchase has been completed! Help other sellers by rating the buyer for ${productTitle || "this item"}.`}
               </p>
-              <button
-                onClick={handleRatingClick}
-                className={buttonClasses}
-              >
+              <button onClick={handleRatingClick} className={buttonClasses}>
                 {hasRating ? "View Rating" : "Rate Buyer"}
               </button>
             </div>
@@ -117,4 +137,3 @@ function BuyerRatingPromptMessageCard({ productId, productTitle, buyerId }) {
 }
 
 export default BuyerRatingPromptMessageCard;
-

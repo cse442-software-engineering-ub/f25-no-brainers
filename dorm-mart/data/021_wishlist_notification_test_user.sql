@@ -1,5 +1,7 @@
 START TRANSACTION;
--- ^ Begin a transaction so the inserts are all-or-nothing.
+-- Seed: wishlist notification test users.
+-- Purpose: creates receiver/seller accounts used by wishlist notification flows.
+-- Safe to rerun: removes and recreates only these accounts.
 SET FOREIGN_KEY_CHECKS = 0;
 
 DELETE FROM user_accounts
@@ -92,7 +94,7 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   'Nice Wallpaper',
-  JSON_ARRAY('/images/starry-wallpaper.jpg'),
+  JSON_ARRAY('/images/starry-wallpaper-image.jpg'),
   20.00,
   'Active',
   0,
@@ -122,7 +124,7 @@ INSERT INTO INVENTORY (
   'North Campus',
   'Like New',
   'Beautiful Wallpaper',
-  JSON_ARRAY('/images/sunset-wallpaper.png'),
+  JSON_ARRAY('/images/sunset-wallpaper-image.png'),
   20.00,
   'Active',
   0,

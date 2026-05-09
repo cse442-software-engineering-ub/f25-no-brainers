@@ -1,7 +1,16 @@
 <?php
+
+// Migration runner is CLI-only.
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
 header('Content-Type: application/json');                      // Return JSON to the client
 
-// Include security utilities for escapeHtml function
+// Include security utilities for escape_html function
 require_once __DIR__ . '/../security/security.php';
 
 require __DIR__ . '/db_connect.php';                            // Load your connection helper
@@ -50,7 +59,6 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {                              // Execute possibly multi-statement SQL
     $err = $conn->error;                                        // Capture the MySQL error message
     $conn->rollback();                                          // Undo any partial changes
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode([
       "success" => false,                       // Report failure (which file + why)
       "message" => "Failed: " . $name . " — " . $err
@@ -59,7 +67,16 @@ foreach ($files as $path) {
   }
 
   // Flush all result sets produced by multi_query to clear the connection for next use
-  while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  try {
+    while ($conn->more_results() && $conn->next_result()) { /* flush */ }
+  } catch (Throwable $e) {
+    $conn->rollback();
+    echo json_encode([
+      "success" => false,
+      "message" => "Failed: " . $name . " — " . $e->getMessage(),
+    ]);
+    exit;
+  }
 
   // Record that we ran this file; if it exists, just bump the timestamp
   $stmt = $conn->prepare(                                       // Use the tracking table we created above
@@ -75,5 +92,5 @@ foreach ($files as $path) {
 }
 
 // XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
-$escapedRan = array_map('escapeHtml', $ran);
+$escapedRan = array_map('escape_html', $ran);
 echo json_encode(["success" => true, "applied" => $escapedRan]);        // Return summary of executed files

@@ -7,8 +7,10 @@
 // Include security headers and functions
 require __DIR__ . '/security.php';
 
+require_local_or_cli_access();
+
 // Set security headers
-setSecurityHeaders();
+set_security_headers();
 
 header('Content-Type: text/html; charset=utf-8');
 
@@ -31,7 +33,7 @@ echo "<!DOCTYPE html>
     
     <div class='info'>
         <h3>Test Input (Raw):</h3>
-        <p>Input: " . htmlspecialchars($testInput) . "</p>
+        <p>Input: " . escape_html($testInput) . "</p>
     </div>
     
     <div class='info'>
@@ -41,7 +43,7 @@ echo "<!DOCTYPE html>
     
     <div class='info'>
         <h3>Test Input (HTML Escaped):</h3>
-        <p>HTML Escaped: " . escapeHtml($testInput) . "</p>
+        <p>HTML Escaped: " . escape_html($testInput) . "</p>
     </div>
     
     <div class='info'>

@@ -7,127 +7,133 @@
  * @version 1.0
  */
 
-// ============================================================================
+require_once __DIR__ . '/../config/app_config.php';
+
 // SECURITY HEADERS
-// ============================================================================
 
 /**
  * Set comprehensive security headers for all API endpoints
  * This function should be called at the start of every API endpoint
  */
-function setSecurityHeaders() {
-    // Content Security Policy - Prevents XSS by controlling resource loading
-    // Restricts which resources can be loaded and executed
-    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none';");
-    
-    // X-XSS-Protection - Enables browser's built-in XSS filter
-    header("X-XSS-Protection: 1; mode=block");
-    
+function is_https_request(): bool {
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
+
+function security_csp_header(): string {
+    return "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' wss:; frame-ancestors 'none';";
+}
+
+function require_local_or_cli_access(): void {
+    if (php_sapi_name() === 'cli') {
+        return;
+    }
+
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if (dm_is_local_host($host)) {
+        return;
+    }
+
+    http_response_code(404);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Not found']);
+    exit;
+}
+
+function dm_enforce_https(): void
+{
+    if (php_sapi_name() === 'cli') return;
+
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if (dm_is_local_host($host)) return;
+
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+
+    if ($isHttps) return;
+
+    if ($host !== '' && dm_is_allowed_redirect_host($host)) {
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        header('Location: https://' . $host . $uri, true, 301);
+        exit;
+    }
+
+    // Host not in allowlist — reject with 421 instead of silently dying
+    http_response_code(421);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'HTTPS required']);
+    exit;
+}
+
+function set_security_headers() {
+    // Content Security Policy - unsafe-eval removed; production React bundles don't need it
+    header('Content-Security-Policy: ' . security_csp_header());
+
     // X-Content-Type-Options - Prevents MIME type sniffing
     header("X-Content-Type-Options: nosniff");
-    
-    // X-Frame-Options - Prevents clickjacking
+
+    // X-Frame-Options - Prevents clickjacking (kept for older browser compat alongside frame-ancestors)
     header("X-Frame-Options: DENY");
-    
+
     // Referrer Policy - Controls referrer information
     header("Referrer-Policy: strict-origin-when-cross-origin");
-    
+
     // Permissions Policy - Controls browser features
     header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
-    
+
+    header('Cross-Origin-Opener-Policy: same-origin');
+
+    // HSTS - Force HTTPS for all future requests; only sent over HTTPS to avoid breaking HTTP
+    if (is_https_request()) {
+        header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+    }
+
     // Remove X-Powered-By header to hide PHP version
     header_remove('X-Powered-By');
 }
 
-// ============================================================================
 // CORS CONFIGURATION
-// ============================================================================
 
 /**
  * Set secure CORS headers for trusted origins only
  * This prevents unauthorized cross-origin requests
  */
-function setSecureCORS() {
+function set_secure_cors() {
     // Skip CORS for CLI requests
     if (php_sapi_name() === 'cli') {
         return;
     }
     
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    
-    // SECURE CORS Configuration - Only allow specific trusted origins
-    $allowedOrigins = [
-        'http://localhost:3000',      // React dev server
-        'http://localhost:8080',      // PHP dev server  
-        'http://localhost',           // Apache local setup
-        'https://aptitude.cse.buffalo.edu',  // Test server
-        'https://cattle.cse.buffalo.edu'    // Production server
-    ];
-    
-    // Check if this is a localhost request
-    $isLocalhost = (
-        $host === 'localhost' ||
-        $host === 'localhost:8080' ||
-        strpos($host, '127.0.0.1') === 0
-    );
-    
-    // Check if this is a production server request
-    $isProductionServer = (
-        $host === 'aptitude.cse.buffalo.edu' ||
-        $host === 'cattle.cse.buffalo.edu'
-    );
-    
-    // Check if origin is explicitly allowed
-    $isAllowedOrigin = in_array($origin, $allowedOrigins);
-    
-    // Set CORS headers based on the request type
-    if ($isLocalhost) {
-        // Localhost development - allow specific origins with credentials
-        if ($isAllowedOrigin) {
-            header("Access-Control-Allow-Origin: $origin");
-            header('Access-Control-Allow-Credentials: true');
-        } else {
-            // Fallback for localhost requests without origin header
-            header("Access-Control-Allow-Origin: http://localhost:3000");
-            header('Access-Control-Allow-Credentials: true');
-        }
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
-        header('Access-Control-Max-Age: 86400');
-    } elseif ($isProductionServer) {
-        // Production servers - allow same domain and specific origins
-        if ($isAllowedOrigin) {
-            header("Access-Control-Allow-Origin: $origin");
-        } else {
-            // Allow same domain requests
-            header("Access-Control-Allow-Origin: https://$host");
-        }
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
-        header('Access-Control-Max-Age: 86400');
-    } elseif ($isAllowedOrigin) {
-        // Explicitly allowed origin
-        header("Access-Control-Allow-Origin: $origin");
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
-        header('Access-Control-Max-Age: 86400');
-    } else {
+    $origin = rtrim($_SERVER['HTTP_ORIGIN'] ?? '', '/');
+    $allowedOrigins = dm_cors_allowed_origins();
+
+    if ($origin === '') {
+        $origin = dm_request_origin();
+    }
+
+    if ($origin === '' || !in_array($origin, $allowedOrigins, true)) {
         // Reject requests from untrusted origins
         http_response_code(403);
         echo json_encode(['ok' => false, 'error' => 'Origin not allowed']);
         exit;
     }
+
+    header("Access-Control-Allow-Origin: {$origin}");
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Accept');
+    header('Access-Control-Max-Age: 86400');
 }
 
-// ============================================================================
 // INPUT SANITIZATION & VALIDATION
-// ============================================================================
 
 /**
- * Sanitize string input to prevent XSS attacks
+ * Normalize string input before validation or storage.
+ *
+ * This helper trims, length-limits, removes null bytes, and preserves the
+ * existing HTML entity behavior for current call sites. Prefer escape_html()
+ * when encoding values specifically for HTML output.
+ *
  * @param string $input The input string to sanitize
  * @param int $maxLength Maximum allowed length (default: 1000)
  * @return string Sanitized string
@@ -146,7 +152,7 @@ function sanitize_string($input, $maxLength = 1000) {
     // Remove null bytes
     $input = str_replace("\0", '', $input);
     
-    // XSS PROTECTION: HTML encode special characters to prevent XSS attacks
+    // Keep existing behavior for callers that expect entity-encoded text.
     $input = htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     
     return $input;
@@ -177,49 +183,6 @@ function sanitize_email($email) {
 }
 
 /**
- * Sanitize JSON input
- * @param string $json JSON string to sanitize
- * @return array|false Sanitized array or false if invalid
- */
-function sanitize_json($json) {
-    if (!is_string($json)) {
-        return false;
-    }
-    
-    // Decode JSON
-    $data = json_decode($json, true);
-    
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        return false;
-    }
-    
-    // Recursively sanitize all string values
-    $data = sanitize_array($data);
-    
-    return $data;
-}
-
-/**
- * Recursively sanitize array values
- * @param array $data Array to sanitize
- * @return array Sanitized array
- */
-function sanitize_array($data) {
-    if (!is_array($data)) {
-        return (array) sanitize_string($data);
-    }
-    
-    $sanitized = [];
-    foreach ($data as $key => $value) {
-        $sanitizedKey = sanitize_string($key, 100);
-        $sanitizedValue = is_array($value) ? sanitize_array($value) : sanitize_string($value);
-        $sanitized[$sanitizedKey] = $sanitizedValue;
-    }
-    
-    return $sanitized;
-}
-
-/**
  * Sanitize number input with min/max validation
  * @param mixed $input The input to sanitize
  * @param int $min Minimum allowed value
@@ -231,59 +194,29 @@ function sanitize_number($input, $min = 0, $max = PHP_INT_MAX) {
     return max($min, min($max, $number));
 }
 
-// ============================================================================
-// ACCESS CONTROL
-// ============================================================================
-
-/**
- * Validate user access to prevent IDOR attacks
- * @param int $requestedUserId The user ID being requested
- * @param int $loggedInUserId The currently logged in user ID
- */
-function validateUserAccess($requestedUserId, $loggedInUserId) {
-    // IDOR Protection - Ensure user can only access their own data
-    if ($requestedUserId != $loggedInUserId) {
-        http_response_code(403);
-        echo json_encode(['ok' => false, 'error' => 'Permission denied - cannot access other user data']);
-        exit;
-    }
-}
-
-// ============================================================================
 // UTILITY FUNCTIONS
-// ============================================================================
 
 /**
- * Escape HTML output to prevent XSS using HTML entity encoding
+ * Escape values for HTML output.
  * 
- * Encoding is more foolproof than filtering - converts <script> to &lt;script&gt;
- * Use for HTML email templates and server-rendered HTML (not JSON APIs - React handles those)
+ * Use this for HTML email templates and server-rendered HTML. Do not use it
+ * for normal JSON API data that React renders as text.
  * 
  * @param string $str String to escape
  * @return string Escaped string with HTML entities
  */
-function escapeHtml($str) {
+function escape_html($str) {
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
 }
 
 /**
- * Escape JSON output to prevent XSS
- * @param string $str String to escape
- * @return string Escaped JSON string
- */
-function escapeJson($str) {
-    // XSS PROTECTION: JSON encode with hex encoding to prevent XSS attacks
-    return json_encode($str ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
-}
-
-/**
- * Validate input with custom rules
+ * Validate input with custom rules.
  * @param string $input Input to validate
  * @param int $maxLength Maximum length allowed
  * @param string|null $allowedChars Regex pattern for allowed characters
  * @return string|false Validated input or false if invalid
  */
-function validateInput($input, $maxLength = 255, $allowedChars = null) {
+function validate_input($input, $maxLength = 255, $allowedChars = null) {
     $input = trim($input);
     if (strlen($input) > $maxLength) {
         return false;
@@ -295,22 +228,20 @@ function validateInput($input, $maxLength = 255, $allowedChars = null) {
 }
 
 /**
- * Check if input contains XSS attack patterns (first layer defense)
+ * Check whether input contains common XSS attack patterns.
  * 
- * Filtering provides early detection, but encoding is more foolproof for output.
- * Use before database storage; combine with encoding for complete protection.
+ * This is a filter for rejecting obviously suspicious input. It is not a
+ * replacement for context-specific output encoding such as escape_html().
  * 
  * @param string $input Input to check
  * @return bool True if XSS pattern detected, false otherwise
  */
-function containsXSSPattern($input) {
+function contains_xss_pattern($input) {
     if (!is_string($input)) {
         return false;
     }
     
-    // Filter: Detects common XSS attack patterns (e.g., <script>, javascript:, event handlers)
-    // This provides first-layer defense before data reaches the database
-    $xssPatterns = [
+    $xss_patterns = [
         '/<script/i',           // Script tags in any case
         '/javascript:/i',        // JavaScript: protocol
         '/onerror=/i',           // Event handlers: onerror
@@ -326,7 +257,7 @@ function containsXSSPattern($input) {
         '/vbscript:/i'           // VBScript protocol
     ];
     
-    foreach ($xssPatterns as $pattern) {
+    foreach ($xss_patterns as $pattern) {
         if (preg_match($pattern, $input)) {
             return true;
         }
@@ -335,39 +266,7 @@ function containsXSSPattern($input) {
     return false;
 }
 
-/**
- * Check if input contains SQL injection attack patterns
- * @param string $input Input to check
- * @return bool True if SQL injection pattern detected
- */
-function containsSQLInjectionPattern($input) {
-    if (!is_string($input)) {
-        return false;
-    }
-    
-    $sqlPatterns = [
-        '/;\s*(DROP|DELETE|INSERT|UPDATE|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE)/i',
-        '/\'\s*;\s*--/',
-        '/\/\*/',
-        '/UNION\s+SELECT/i',
-        '/OR\s+1\s*=\s*1/i',
-        '/OR\s+\'1\'\s*=\s*\'1\'/i',
-        '/\'\s+OR\s+\'\'/i',
-        '/\'\s+OR\s+1\s*=/i'
-    ];
-    
-    foreach ($sqlPatterns as $pattern) {
-        if (preg_match($pattern, $input)) {
-            return true;
-        }
-    }
-    
-    return false;
-}
-
-// ============================================================================
 // RATE LIMITING FUNCTIONS
-// ============================================================================
 
 /**
  * Check if session has exceeded rate limit for login attempts
@@ -581,23 +480,7 @@ function get_remaining_lockout_minutes($lockoutUntil) {
     return max(0, ceil($remainingSeconds / 60));
 }
 
-/**
- * Reset all lockouts (admin function)
- * Resets all session-based rate limiting lockouts
- */
-function reset_all_lockouts() {
-    require_once __DIR__ . '/../database/db_connect.php';
-    
-    $conn = db();
-    $stmt = $conn->prepare('UPDATE login_rate_limits SET failed_login_attempts = 0, last_failed_attempt = NULL, lockout_until = NULL');
-    $stmt->execute();
-    $stmt->close();
-    $conn->close();
-}
-
-// ============================================================================
 // PASSWORD SECURITY
-// ============================================================================
 
 /**
  * Hash password securely using bcrypt
@@ -609,17 +492,15 @@ function hash_password($password) {
     return password_hash($password, PASSWORD_BCRYPT);
 }
 
-// ============================================================================
 // INITIALIZATION
-// ============================================================================
 
 /**
  * Initialize security for API endpoints
  * Call this function at the start of every API endpoint
  */
-function initSecurity() {
-    setSecurityHeaders();
-    setSecureCORS();
+function init_security() {
+    set_security_headers();
+    set_secure_cors();
 }
 
 ?>

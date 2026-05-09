@@ -1,29 +1,22 @@
 <?php
 declare(strict_types=1);
 
-// CORS headers to allow frontend access
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../security/security.php';
+require_once __DIR__ . '/../helpers/response.php';
+init_security();
 
 // Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
+allow_options_request(200);
 
 try {
     // Full path to categories.json in this same directory
     $filePath = __DIR__ . '/categories.json';
 
     if (!file_exists($filePath)) {
-        http_response_code(404);
-        echo json_encode([
+        json_response([
             'ok'    => false,
             'error' => 'categories.json file not found'
-        ]);
-        exit;
+        ], 404);
     }
 
     $json = file_get_contents($filePath);
@@ -63,14 +56,9 @@ try {
     }
 
     // ✅ success: just return the array
-    echo json_encode($data);
+    json_response($data);
 
 } catch (Throwable $e) {
     error_log('get_categories error: ' . $e->getMessage());
-    http_response_code(500);
-    // XSS PROTECTION: Escape error message to prevent XSS if it contains user input
-    echo json_encode([
-        'ok'    => false,
-        'error' => escapeHtml($e->getMessage())
-    ]);
+    json_response(['ok' => false, 'error' => 'Server error'], 500);
 }

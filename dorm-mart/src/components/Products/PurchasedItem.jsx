@@ -1,14 +1,28 @@
 import { Link } from "react-router-dom";
-import { withFallbackImage } from "../../utils/imageFallback";
+import {
+  withFallbackImage,
+  onProductImageError,
+  resolveStoredImageUrl,
+} from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
 import { useState, useEffect } from "react";
 import ReviewModal from "../../pages/Reviews/ReviewModal";
+import { formatDateTime } from "../../utils/formatters";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-
-function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false }) {
-  const productIdParam = id !== undefined && id !== null ? encodeURIComponent(id) : "";
+function PurchasedItem({
+  id,
+  title,
+  seller,
+  date,
+  image,
+  autoOpenReview = false,
+}) {
+  const productIdParam =
+    id !== undefined && id !== null ? encodeURIComponent(id) : "";
   const detailPath = `/app/viewReceipt?id=${productIdParam}`;
-  const displayImage = withFallbackImage(image);
+  const displayImage = withFallbackImage(
+    resolveStoredImageUrl(image, API_BASE),
+  );
   const detailState = { id, title, seller, date, image: displayImage };
 
   const [hasReview, setHasReview] = useState(false);
@@ -28,7 +42,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           {
             method: "GET",
             credentials: "include",
-          }
+          },
         );
 
         if (response.ok) {
@@ -73,7 +87,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -91,14 +105,11 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
     <>
       <li className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow">
         {/* Left: image */}
-        <Link
-          to={detailPath}
-          state={detailState}
-          className="block"
-        >
+        <Link to={detailPath} state={detailState} className="block">
           <img
             src={displayImage}
             alt="Item"
+            onError={onProductImageError}
             className="w-full h-48 sm:w-40 sm:h-40 object-cover rounded select-none"
           />
         </Link>
@@ -116,11 +127,15 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
                 {title}
               </Link>
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">Sold by {seller}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              Sold by {seller}
+            </p>
           </div>
 
           {/* Bottom: date */}
-          <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">Purchased on {date}</p>
+          <p className="mt-2 sm:mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Purchased on {date ? formatDateTime(date) : ""}
+          </p>
         </div>
 
         {/* Right: buttons */}
@@ -128,7 +143,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
           <Link
             to={detailPath}
             state={detailState}
-            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
+            className="text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-blue-700"
           >
             See Receipt
           </Link>
@@ -157,6 +172,7 @@ function PurchasedItem({ id, title, seller, date, image, autoOpenReview = false 
         mode={hasReview ? "view" : "create"}
         productId={id}
         productTitle={title}
+        productImageUrl={displayImage}
         existingReview={existingReview}
         onReviewSubmitted={handleReviewSubmitted}
         viewMode="buyer"

@@ -1,110 +1,74 @@
 # Backend API Documentation
 
 ## What This Is
-A simple guide to all the backend files in the API folder. Each file does one main thing.
 
----
+This is a quick map of the current PHP `api/` tree. Endpoint folders and PHP files use `snake_case`; see `naming-conventions.md` for the naming rules.
 
-## 📁 **auth/** - User Login & Security
-Files that handle user accounts and passwords.
+## auth/
 
-- **auth_handle.php** - Handles user login requests and checks if passwords are correct.
-- **change_password.php** - Lets logged-in users change their password safely.
-- **create_account.php** - Creates new user accounts when people sign up.
-- **forgot-password.php** - Sends password reset emails to users who forgot their password.
-- **login.php** - Main login page that checks username/password and blocks bad attempts.
-- **logout.php** - Logs users out and clears their session.
-- **validate-reset-token.php** - Checks if password reset links are valid and not expired.
+User sessions, account creation, login, logout, CSRF, WebSocket auth tokens, and password reset flows.
 
----
+- `auth_handle.php` - Shared login/session helpers, including `require_login()`.
+- `create_account.php`, `login.php`, `logout.php`, `me.php` - Core account/session endpoints.
+- `change_password.php`, `forgot_password.php`, `reset_password.php`, `validate_reset_token.php` - Password change and reset endpoints.
+- `get_csrf_token.php`, `ws_token.php` - Security/token helpers.
 
-## 📁 **database/** - Database Stuff
-Files that connect to and manage the database.
+## chat/
 
-- **db_connect.php** - Connects to the MySQL database. Used by all other files.
-- **migrate_data.php** - Moves data from old database to new database safely.
-- **migrate_schema.php** - Updates database tables when we make changes.
+Conversation and message endpoints used by the React chat UI.
 
----
+- `ensure_conversation.php`, `fetch_conversations.php`, `fetch_conversation.php`, `fetch_new_messages.php` - Conversation loading.
+- `create_message.php`, `create_image_message.php`, `serve_chat_image.php` - Message creation and image serving.
+- `delete_conversation.php`, `fetch_unread_messages.php`, `typing_status.php` - Chat state helpers.
 
-## 📁 **purchase-history/** - Shopping History
-Files that handle what users bought.
+## commerce flows
 
-- **fetch-transacted-items.php** - Gets a list of all items a user has purchased.
+Selling, buying, scheduled purchases, receipts, and purchase history.
 
----
+- `seller_dashboard/` - Seller listing management, listing deletion, product editing, and status updates.
+- `scheduled_purchases/` - Create, list, accept/decline, cancel, and expire scheduled purchase requests.
+- `confirm_purchases/` - Seller confirmation requests and buyer responses for completed/failed purchases.
+- `receipt/view_receipt.php` - Receipt detail payload for product or confirmation request.
+- `purchase_history/` - Purchase history list and transacted item test endpoint.
+- `product/view_product.php`, `product/get_item_info.php` - Product detail endpoints.
+- `listings/landing_listings.php`, `search/get_search_items.php` - Browse and search listing endpoints.
 
-## 📁 **redirects/** - Page Redirects
-Files that send users to the right pages.
+## user data
 
-- **handle_password_reset_token_redirect.php** - When users click password reset links in emails, this sends them to the right page.
-- **show_password_reset_link_expired_page.php** - Shows an error page when reset links don't work.
+Profile, preferences, reviews, wishlist, notifications, and category data.
 
----
+- `profile/` - Current profile, public profile, username lookup, profile updates, profile photo upload, and user preferences.
+- `reviews/` - Product reviews, buyer ratings, review lookup, and review image upload.
+- `wishlist/` - Wishlist add/remove/status/list endpoints plus unread notification tracking.
+- `user/me.php` - Lightweight landing-page user payload.
+- `utility/get_categories.php`, `utility/get_active_categories.php`, `utility/categories.json` - Category data.
 
-## 📁 **security/** - Safety Features
-Files that keep the site secure.
+## infrastructure
 
-- **security.php** - Main security file that blocks too many login attempts and handles CORS.
+Shared backend support code.
 
----
+- `database/` - Database connection, schema migration, data migration, and DB test script.
+- `security/security.php` - Security headers, CORS, sanitization helpers, and rate-limit support.
+- `helpers/request.php`, `helpers/response.php` - Shared request/response helpers.
+- `config/app_config.php`, `config/email_config.php`, `config/email_policy.php` - Environment-backed app configuration and allowed-domain policy.
+- `media/image.php` - Safe image proxy for uploaded or stored media paths.
+- `redirects/` - Password reset redirect and expired-link page.
+- `utility/` - CLI/admin helpers for hashing, lockouts, rate-limit inspection, environment loading, and transactional email HTML.
 
-## 📁 **seller-dashboard/** - Seller Tools
-Files for people who sell items.
+## api_test_files/
 
-- **manage_seller_listings.php** - Lets sellers add, edit, or delete their product listings.
+Manual and integration-style scripts that call real endpoints. Use `API_TEST_BASE_URL` when the default local API base is not correct.
 
----
+- `bootstrap.php` - Shared API test helpers.
+- `chris/` - Purchase history and reset-password scenario scripts.
+- `sameer/` - Forgot-password, SQL injection, XSS, and rate-limit scripts.
 
-## 📁 **utility/** - Admin Tools
-Files that help administrators manage the site.
+## Security Notes
 
-- **hash_password.php** - Converts passwords into secure codes for storage.
-- **manage_forgot_password_rate_limiting.php** - Admin tool to reset the 10-minute email limit.
-- **monitor_user_attempts.php** - Shows admins who tried to login and failed.
-- **rate_limit_dashboard.php** - Admin dashboard showing security stats.
-- **reset_user_account_lockouts.php** - Admin tool to unlock blocked user accounts.
+- Most app endpoints include `security/security.php` for headers and CORS.
+- Authenticated endpoints use `require_login()` from `auth/auth_handle.php`.
+- Password reset links are generated from `API_BASE_URL` and redirected to `FRONTEND_BASE_URL`.
+- CORS uses `CORS_ALLOWED_ORIGINS`; deployment-specific origins should not be hardcoded in endpoints.
+- Developer/admin utility scripts should stay CLI-only unless explicitly designed for browser use.
 
----
-
-## 📁 **api-test-files/** - Test Data
-Files used for testing the system.
-
-### **chris/** - Chris's Test Files
-- **items-with-year.php** - Creates fake purchase data with different years.
-- **multiple-purchased-items.php** - Creates fake data for users who bought many items.
-- **no-purchased-item.php** - Creates fake data for users who bought nothing.
-- **one-purchased-item.php** - Creates fake data for users who bought one item.
-
-### **sameer/** - Sameer's Test Files
-- **invalid-email.php** - Tests what happens with bad email addresses.
-- **valid-email.php** - Tests what happens with good email addresses.
-
----
-
-## 📄 **Other Files**
-
-- **landingListings.php** - Gets the main page product listings.
-- **userPreferences.php** - Handles user settings like interests and notifications.
-
----
-
-## 🔒 **How Security Works**
-
-- **Rate Limiting**: Stops people from trying too many passwords too fast
-- **Password Reset**: Secure links that expire and can only be used once
-- **CORS**: Allows the frontend to talk to the backend safely
-- **Password Hashing**: Passwords are stored as codes, not plain text
-
----
-
-## 🛠 **Admin Tools**
-
-- **Rate Limit Management**: Tools to reset security limits
-- **User Lockout Control**: Tools to unlock blocked accounts
-- **Database Migration**: Tools to update the database safely
-- **Testing**: Tools to create fake data for testing
-
----
-
-*Last Updated: October 2024*
+_Last updated: environment-backed API configuration._

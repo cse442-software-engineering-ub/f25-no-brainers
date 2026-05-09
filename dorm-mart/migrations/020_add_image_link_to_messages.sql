@@ -1,3 +1,0 @@
-ALTER TABLE messages
-  ADD COLUMN IF NOT EXISTS image_url VARCHAR(255) NULL
-  AFTER content;

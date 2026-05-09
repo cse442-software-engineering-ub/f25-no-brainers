@@ -1,9 +1,13 @@
 // src/pages/NotificationPage.jsx
-import React, { useContext, useMemo, useState, useEffect } from "react";
+import { useContext, useMemo, useState, useEffect } from "react";
 import { ChatContext } from "../../context/ChatContext";
+import {
+  onProductImageError,
+  resolveProductPhotoUrl,
+} from "../../utils/imageFallback";
 import { useNavigate } from "react-router-dom";
-
-const BASE = process.env.REACT_APP_API_BASE || "api";
+import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 export default function NotificationPage() {
   const ctx = useContext(ChatContext);
@@ -22,12 +26,12 @@ export default function NotificationPage() {
       .map(([productId, info]) => {
         const count = Number(info?.count ?? 0);
         const title = info?.title ?? `Listing #${productId}`;
-        const image_url = info?.image_url ?? null;
+        const imageUrl = info?.imageUrl ?? null;
         return {
           productId: Number(productId),
           title,
           count,
-          image_url,
+          imageUrl,
         };
       })
       .filter((item) => item.count > 0);
@@ -49,7 +53,7 @@ export default function NotificationPage() {
 
   async function handleMarkAllRead() {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_all_items_read.php`, {
+      const res = await csrfFetch(`${API_BASE}/wishlist/mark_all_items_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -78,7 +82,7 @@ export default function NotificationPage() {
 
   async function handleMarkRead(productId) {
     try {
-      const res = await fetch(`${BASE}/wishlist/mark_item_read.php`, {
+      const res = await csrfFetch(`${API_BASE}/wishlist/mark_item_read.php`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,7 +98,7 @@ export default function NotificationPage() {
 
       // Optimistic local UI update
       setLocalItems((prev) =>
-        prev.filter((item) => item.productId !== productId)
+        prev.filter((item) => item.productId !== productId),
       );
 
       // Decrement the global total + remove from map so nav badge updates
@@ -150,40 +154,45 @@ export default function NotificationPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {localItems.map(({ productId, title, count, image_url }) => {
-              const rawImg = image_url || null;
+            {localItems.map(({ productId, title, count, imageUrl }) => {
+              const rawImg = imageUrl || null;
               const proxied = rawImg
-                ? `${BASE}/image.php?url=${encodeURIComponent(String(rawImg))}`
+                ? resolveProductPhotoUrl(rawImg, {
+                    apiBase: API_BASE,
+                    proxyUnknown: true,
+                  })
                 : null;
 
               return (
                 <div
                   key={productId}
-                  className="flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-150"
+                  className="flex items-start gap-3 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-150 min-w-0"
                 >
                   {/* Dot */}
-                  <div className="pt-2">
+                  <div className="pt-2 flex-shrink-0">
                     <span className="inline-block w-2 h-2 rounded-full bg-blue-600" />
                   </div>
 
                   {/* Main content */}
-                  <div className="flex-1 flex gap-3">
+                  <div className="flex min-w-0 flex-1 gap-3">
                     {proxied && (
                       <div className="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
                         <img
                           src={proxied}
                           alt={title}
+                          onError={onProductImageError}
                           className="w-full h-full object-cover"
                         />
                       </div>
                     )}
 
-                    <div className="flex flex-col gap-1">
-                      <h2 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <h2 className="min-w-0 text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                         <button
                           type="button"
                           onClick={() => goToProduct(productId)}
-                          className="text-left hover:underline decoration-blue-500 underline-offset-2"
+                          className="block w-full min-w-0 truncate text-left hover:underline decoration-blue-500 underline-offset-2"
+                          title={title}
                         >
                           {title}
                         </button>
@@ -204,7 +213,7 @@ export default function NotificationPage() {
                   </div>
 
                   {/* Action */}
-                  <div className="pt-1">
+                  <div className="flex-shrink-0 pt-1">
                     <button
                       type="button"
                       onClick={() => handleMarkRead(productId)}

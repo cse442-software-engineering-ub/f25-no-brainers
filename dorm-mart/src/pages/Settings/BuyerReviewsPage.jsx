@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
 import StarRating from "../Reviews/StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-const NAV_BLUE = "#2563EB";
-
+import PageBackButton from "../../components/PageBackButton";
+import { API_BASE } from "../../utils/apiConfig";
 /**
  * BuyerReviewsPage Component
- * 
- * Page for displaying buyer reviews (reviews that sellers gave to buyers)
- * Only accessible to the logged-in user viewing their own reviews
+ *
+ * Page for displaying seller ratings (ratings that sellers gave to buyers)
+ * Shows how sellers have rated the logged-in user as a buyer
+ * Only accessible to the logged-in user viewing their own ratings
  */
 function BuyerReviewsPage() {
   const navigate = useNavigate();
@@ -18,7 +17,7 @@ function BuyerReviewsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch buyer reviews on mount
+  // Fetch seller ratings on mount
   useEffect(() => {
     fetchBuyerReviews();
   }, []);
@@ -33,22 +32,24 @@ function BuyerReviewsPage() {
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch buyer reviews");
+        throw new Error("Failed to fetch seller ratings");
       }
 
       const result = await response.json();
       if (result.success) {
         setReviews(result.reviews || []);
       } else {
-        throw new Error(result.error || "Failed to fetch buyer reviews");
+        throw new Error(result.error || "Failed to fetch seller ratings");
       }
     } catch (err) {
-      console.error("Error fetching buyer reviews:", err);
-      setError(err.message || "Failed to load buyer reviews. Please try again.");
+      console.error("Error fetching seller ratings:", err);
+      setError(
+        err.message || "Failed to load seller ratings. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -56,25 +57,24 @@ function BuyerReviewsPage() {
 
   return (
     <SettingsLayout>
-      <div className="mb-6 flex items-center justify-between border-b border-slate-200 pb-3">
-        <h1 className="text-2xl font-serif font-semibold" style={{ color: NAV_BLUE }}>
-          Buyer Reviews
-        </h1>
-        <button
-          type="button"
-          onClick={() => navigate("/app/setting/my-profile")}
-          className="rounded-lg border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 dark:border-gray-600 dark:hover:bg-gray-700"
-          style={{ color: NAV_BLUE }}
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
+      <div className="mb-6 flex items-center justify-between border-b border-slate-200 dark:border-gray-700 pb-3">
+        <div>
+          <h1 className="text-2xl font-serif font-semibold text-blue-600">
+            How Sellers Rated You
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            See ratings and feedback from sellers about your purchases
+          </p>
+        </div>
+        <PageBackButton onClick={() => navigate("/app/setting/my-profile")} />
       </div>
 
       <div className="flex flex-col gap-6">
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">Loading reviews...</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              Loading ratings...
+            </p>
           </div>
         ) : error ? (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -82,7 +82,10 @@ function BuyerReviewsPage() {
           </div>
         ) : reviews.length === 0 ? (
           <div className="flex items-center justify-center py-8">
-            <p className="text-gray-600 dark:text-gray-400">No buyer reviews yet.</p>
+            <p className="text-gray-600 dark:text-gray-400">
+              No seller ratings yet. Sellers will be able to rate you after
+              completed purchases.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-6 min-w-0">
@@ -101,23 +104,33 @@ function BuyerReviewsPage() {
                     </p>
                   </div>
                   <div className="flex-shrink-0">
-                    <StarRating rating={review.rating} readOnly={true} size={24} />
+                    <StarRating
+                      rating={review.rating}
+                      readOnly={true}
+                      size={24}
+                    />
                   </div>
                 </div>
-                
+
                 {/* Review Text */}
                 {review.review_text && (
                   <div className="mb-3 min-w-0">
-                    <div 
+                    <div
                       className="p-4 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                       style={{
-                        borderRadius: '0.5rem',
-                        WebkitBorderRadius: '0.5rem',
-                        MozBorderRadius: '0.5rem',
-                        overflow: 'hidden'
+                        borderRadius: "0.5rem",
+                        WebkitBorderRadius: "0.5rem",
+                        MozBorderRadius: "0.5rem",
+                        overflow: "hidden",
                       }}
                     >
-                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                      <p
+                        className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
+                        style={{
+                          wordBreak: "break-all",
+                          overflowWrap: "anywhere",
+                        }}
+                      >
                         {review.review_text}
                       </p>
                     </div>
@@ -140,5 +153,3 @@ function BuyerReviewsPage() {
 }
 
 export default BuyerReviewsPage;
-
-

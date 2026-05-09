@@ -1,11 +1,13 @@
 START TRANSACTION;
--- 020_seed_realistic_marketplace_data.sql
--- Seed data for 4 user accounts and 12 product listings
--- Creates realistic marketplace data with diverse items across different categories
--- Each account has 3 unique items (no duplicates across accounts)
+-- Seed: realistic marketplace data.
+-- Purpose: creates 4 organic-looking seller accounts and 12 diverse product listings.
+-- Notes: each account has 3 unique items, with images copied from data/test-images.
 
 -- Password hash for "1234!" for all accounts
 SET @password_hash = '$2y$10$GbrdUE1/URrVdrSoa83d1OMfNWeJAuuzyEU4UvMMANKeub4./C.UO';
+
+-- Re-running migrate_data.php leaves chat rows pointing at these users; allow cleanup without FK errors.
+SET SESSION foreign_key_checks = 0;
 
 -- ============================================
 -- ACCOUNT 1: Lisa Patterson
@@ -529,5 +531,5 @@ INSERT INTO INVENTORY (
   0
 );
 
+SET SESSION foreign_key_checks = 1;
 COMMIT;
-

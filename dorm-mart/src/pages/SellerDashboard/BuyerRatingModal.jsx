@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import StarRating from "../Reviews/StarRating";
-
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
+import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
 /**
  * BuyerRatingModal Component
- * 
+ *
  * Modal for sellers to rate buyers (star rating only)
- * 
+ *
  * @param {boolean} isOpen - Controls modal visibility
  * @param {function} onClose - Callback when modal is closed
  * @param {number} productId - ID of the product
@@ -36,32 +36,14 @@ function BuyerRatingModal({
 
   const maxChars = 250;
 
-  // Fetch existing rating when modal opens
-  useEffect(() => {
-    if (isOpen && productId && buyerId) {
-      fetchExistingRating();
-    } else if (!isOpen) {
-      // Reset state when modal closes
-      setExistingRating(null);
-      setRating(0);
-      setReviewText("");
-      setCharCount(0);
-      setError(null);
-      setShowConfirmModal(false);
-      setConfirmMessage("");
-      setConfirmCallback(null);
-      setPendingSubmit(false);
-    }
-  }, [isOpen, productId, buyerId]);
-
-  const fetchExistingRating = async () => {
+  const fetchExistingRating = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE}/reviews/get_buyer_rating.php?product_id=${productId}`,
         {
           method: "GET",
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
@@ -91,7 +73,25 @@ function BuyerRatingModal({
       setReviewText("");
       setCharCount(0);
     }
-  };
+  }, [productId]);
+
+  // Fetch existing rating when modal opens
+  useEffect(() => {
+    if (isOpen && productId && buyerId) {
+      fetchExistingRating();
+    } else if (!isOpen) {
+      // Reset state when modal closes
+      setExistingRating(null);
+      setRating(0);
+      setReviewText("");
+      setCharCount(0);
+      setError(null);
+      setShowConfirmModal(false);
+      setConfirmMessage("");
+      setConfirmCallback(null);
+      setPendingSubmit(false);
+    }
+  }, [isOpen, productId, buyerId, fetchExistingRating]);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -115,28 +115,28 @@ function BuyerRatingModal({
   useEffect(() => {
     if (isOpen) {
       const scrollY = window.scrollY;
-      document.documentElement.style.overflow = 'hidden';
-      document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
       document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      document.body.style.width = "100%";
     } else {
       const scrollY = document.body.style.top;
-      document.documentElement.style.overflow = 'unset';
-      document.body.style.overflow = 'unset';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "unset";
+      document.body.style.overflow = "unset";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
       if (scrollY) {
-        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
       }
     }
     return () => {
-      document.documentElement.style.overflow = 'unset';
-      document.body.style.overflow = 'unset';
-      document.body.style.position = '';
-      document.body.style.top = '';
-      document.body.style.width = '';
+      document.documentElement.style.overflow = "unset";
+      document.body.style.overflow = "unset";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, [isOpen]);
 
@@ -145,7 +145,7 @@ function BuyerRatingModal({
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     if (rating <= 0) {
       setError("Please select a rating");
       return;
@@ -155,11 +155,12 @@ function BuyerRatingModal({
 
     // Set pending submit flag to prevent direct submission
     setPendingSubmit(true);
-    
+
     // Show confirmation dialog before submitting
-    const message = "Are you sure you want to submit this rating? Changes cannot be made.";
+    const message =
+      "Are you sure you want to submit this rating? Changes cannot be made.";
     setConfirmMessage(message);
-    
+
     // Create callback function that will be called when user confirms
     const callback = async () => {
       // Close confirmation modal first
@@ -173,7 +174,7 @@ function BuyerRatingModal({
     };
     // Store the callback function directly
     setConfirmCallback(() => callback);
-    
+
     // Set state to show confirmation modal
     setShowConfirmModal(true);
     return; // Important: stop execution here, don't proceed with submission
@@ -184,20 +185,23 @@ function BuyerRatingModal({
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/reviews/submit_buyer_rating.php`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+      const response = await csrfFetch(
+        `${API_BASE}/reviews/submit_buyer_rating.php`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            product_id: productId,
+            buyer_user_id: buyerId,
+            rating: rating,
+            review_text: reviewText.trim(),
+          }),
         },
-        credentials: "include",
-        body: JSON.stringify({
-          product_id: productId,
-          buyer_user_id: buyerId,
-          rating: rating,
-          review_text: reviewText.trim(),
-        }),
-      });
+      );
 
       const result = await response.json();
 
@@ -239,7 +243,7 @@ function BuyerRatingModal({
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            Rate Buyer
+            {existingRating ? "Buyer Rating" : "Rate Buyer"}
           </h2>
           <button
             onClick={onClose}
@@ -266,7 +270,10 @@ function BuyerRatingModal({
         <div className="px-6 py-6">
           <div className="mb-4 min-w-0">
             <p className="text-sm text-gray-600 dark:text-gray-400 break-words">
-              Product: <span className="font-medium text-gray-900 dark:text-gray-100 break-words">{productTitle}</span>
+              Product:{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100 break-words">
+                {productTitle}
+              </span>
             </p>
           </div>
 
@@ -290,16 +297,22 @@ function BuyerRatingModal({
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Review
                   </label>
-                  <div 
+                  <div
                     className="review-text-rounded p-4 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 min-w-0 overflow-hidden"
                     style={{
-                      borderRadius: '0.5rem',
-                      WebkitBorderRadius: '0.5rem',
-                      MozBorderRadius: '0.5rem',
-                      overflow: 'hidden'
+                      borderRadius: "0.5rem",
+                      WebkitBorderRadius: "0.5rem",
+                      MozBorderRadius: "0.5rem",
+                      overflow: "hidden",
                     }}
                   >
-                    <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere" style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}>
+                    <p
+                      className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words break-all overflow-wrap-anywhere"
+                      style={{
+                        wordBreak: "break-all",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
                       {existingRating.review_text}
                     </p>
                   </div>
@@ -307,13 +320,14 @@ function BuyerRatingModal({
               )}
               {existingRating.created_at && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  Rated on {new Date(existingRating.created_at).toLocaleDateString()}
+                  Rated on{" "}
+                  {new Date(existingRating.created_at).toLocaleDateString()}
                 </p>
               )}
               <div className="flex justify-end">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium"
                 >
                   Close
                 </button>
@@ -342,17 +356,20 @@ function BuyerRatingModal({
 
               {/* Review Text Section */}
               <div className="mb-6">
-                <label htmlFor="buyer-review-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label
+                  htmlFor="buyer-review-text"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
                   Review (Optional)
                 </label>
-                <div 
+                <div
                   className="overflow-hidden border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 min-w-0"
                   style={{
-                    borderRadius: '0.5rem',
-                    borderTopLeftRadius: '0.5rem',
-                    borderTopRightRadius: '0.5rem',
-                    borderBottomLeftRadius: '0.5rem',
-                    borderBottomRightRadius: '0.5rem'
+                    borderRadius: "0.5rem",
+                    borderTopLeftRadius: "0.5rem",
+                    borderTopRightRadius: "0.5rem",
+                    borderBottomLeftRadius: "0.5rem",
+                    borderBottomRightRadius: "0.5rem",
                   }}
                 >
                   <textarea
@@ -364,13 +381,13 @@ function BuyerRatingModal({
                     maxLength={maxChars}
                     className="w-full px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none break-words break-all overflow-wrap-anywhere"
                     style={{
-                      border: 'none',
-                      borderRadius: '0',
-                      overflow: 'auto',
-                      scrollbarWidth: 'thin',
-                      scrollbarColor: 'rgba(156, 163, 175, 0.5) transparent',
-                      wordBreak: 'break-all',
-                      overflowWrap: 'anywhere'
+                      border: "none",
+                      borderRadius: "0",
+                      overflow: "auto",
+                      scrollbarWidth: "thin",
+                      scrollbarColor: "rgba(156, 163, 175, 0.5) transparent",
+                      wordBreak: "break-all",
+                      overflowWrap: "anywhere",
                     }}
                   />
                 </div>
@@ -379,7 +396,9 @@ function BuyerRatingModal({
                     {charCount} / {maxChars} characters
                   </p>
                   {charCount >= maxChars && (
-                    <p className="text-xs text-red-500">Maximum character limit reached</p>
+                    <p className="text-xs text-red-500">
+                      Maximum character limit reached
+                    </p>
                   )}
                 </div>
               </div>
@@ -387,7 +406,9 @@ function BuyerRatingModal({
               {/* Error Message */}
               {error && (
                 <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
                 </div>
               )}
 
@@ -404,7 +425,7 @@ function BuyerRatingModal({
                 <button
                   type="submit"
                   disabled={!isFormValid || isSubmitting}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Submitting..." : "Submit Rating"}
                 </button>
@@ -416,9 +437,9 @@ function BuyerRatingModal({
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div 
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" 
-          role="dialog" 
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
           aria-modal="true"
           onClick={(e) => {
             // Close confirmation modal if clicking backdrop
@@ -430,13 +451,17 @@ function BuyerRatingModal({
             }
           }}
         >
-          <div 
+          <div
             className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 pt-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Ready to Submit?</h2>
-              <p className="mt-2 text-gray-600 dark:text-gray-300">{confirmMessage}</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                Ready to Submit?
+              </h2>
+              <p className="mt-2 text-gray-600 dark:text-gray-300">
+                {confirmMessage}
+              </p>
             </div>
             <div className="px-6 py-4 flex justify-end gap-3">
               <button
@@ -473,7 +498,7 @@ function BuyerRatingModal({
                     setPendingSubmit(false);
                   }
                 }}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 dark:bg-blue-800 dark:hover:bg-blue-900"
               >
                 Confirm
               </button>
@@ -486,4 +511,3 @@ function BuyerRatingModal({
 }
 
 export default BuyerRatingModal;
-

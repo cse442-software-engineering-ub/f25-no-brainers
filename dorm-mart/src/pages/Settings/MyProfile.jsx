@@ -1,14 +1,25 @@
 import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useNavigate } from "react-router-dom";
 import SettingsLayout from "./SettingsLayout";
+import {
+  withFallbackImage,
+  FALLBACK_IMAGE_URL,
+  resolveStoredImageUrl,
+  onProductImageError,
+} from "../../utils/imageFallback";
+import { API_BASE } from "../../utils/apiConfig";
+import { csrfFetch } from "../../utils/csrfFetch";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "/api";
-const NAV_BLUE = "#2563EB";
+/** Primary actions: match home / landing square-ish CTAs (rounded-lg, not pill). */
+const primaryActionButtonClass =
+  "inline-flex items-center justify-center rounded-lg bg-blue-600 dark:bg-blue-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 touch-manipulation";
 
 // File type restrictions (same as product listing and chat)
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
-const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+/** Same types as seller listing + extensions (Explorer often filters better with both). */
+const PROFILE_PHOTO_ACCEPT = [...ALLOWED_MIME, ...ALLOWED_EXTS].join(",");
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB - reasonable limit for profile photos
 
 function isAllowedType(f) {
   // Prefer MIME, but fall back to extension if needed
@@ -16,7 +27,7 @@ function isAllowedType(f) {
 
   const name = (f.name || "").toLowerCase();
   const ext = ALLOWED_EXTS.has(
-    name.slice(name.lastIndexOf(".")) // includes dot
+    name.slice(name.lastIndexOf(".")), // includes dot
   );
   return ext;
 }
@@ -54,7 +65,7 @@ async function fetchSettingsProfile(apiBase = API_BASE) {
 }
 
 async function saveProfileFields(payload, apiBase = API_BASE) {
-  const response = await fetch(`${apiBase}/profile/update_profile.php`, {
+  const response = await csrfFetch(`${apiBase}/profile/update_profile.php`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -81,7 +92,7 @@ async function uploadProfilePhoto(file, apiBase = API_BASE) {
   const formData = new FormData();
   formData.append("photo", file);
 
-  const response = await fetch(`${apiBase}/profile/upload_profile_photo.php`, {
+  const response = await csrfFetch(`${apiBase}/profile/upload_profile_photo.php`, {
     method: "POST",
     body: formData,
     credentials: "include",
@@ -137,51 +148,83 @@ function StarRating({ rating = 0, size = 28, label }) {
   const normalized = Math.max(0, Math.min(5, Number(rating) || 0));
   const stars = Array.from({ length: 5 }, (_, index) => {
     const fillFraction = Math.max(0, Math.min(1, normalized - index));
-    return <StarIcon key={`${label || "rating"}-${index}`} fillFraction={fillFraction} size={size} />;
+    return (
+      <StarIcon
+        key={`${label || "rating"}-${index}`}
+        fillFraction={fillFraction}
+        size={size}
+      />
+    );
   });
 
   return (
     <div className="flex items-center gap-1 sm:gap-2">
-      <div className="flex items-center gap-0.5 sm:gap-1" aria-label={label || `Rating: ${normalized} out of 5`}>
+      <div
+        className="flex items-center gap-0.5 sm:gap-1"
+        aria-label={label || `Rating: ${normalized} out of 5`}
+      >
         {stars}
       </div>
-      <span className="text-xs sm:text-sm font-semibold text-gray-600">{normalized.toFixed(1)}</span>
+      <span className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-300">
+        {normalized.toFixed(1)}
+      </span>
     </div>
   );
 }
 
 function ReviewRow({ review }) {
-  const attachments = [review.image_1, review.image_2, review.image_3].filter(Boolean);
-  const imageClass = "h-20 w-24 sm:h-28 sm:w-32 rounded-xl object-cover shadow flex-shrink-0";
+  const attachments = [review.image_1, review.image_2, review.image_3].filter(
+    Boolean,
+  );
+  const imageClass =
+    "h-20 w-24 sm:h-28 sm:w-32 rounded-xl object-cover shadow flex-shrink-0";
 
   return (
-    <article className="flex flex-col gap-3 sm:gap-4 rounded-none sm:rounded-2xl border-0 sm:border border-slate-200 bg-transparent sm:bg-white/80 p-3 sm:p-4 shadow-none sm:shadow-sm transition sm:hover:border-blue-200 sm:hover:shadow">
+    <article className="flex flex-col gap-3 sm:gap-4 rounded-none sm:rounded-lg border-0 sm:border border-slate-200 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm transition sm:hover:border-blue-200 dark:sm:hover:border-blue-600 sm:hover:shadow">
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-0.5 min-w-0 flex-1">
-            <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{review.reviewer_name || "Anonymous"}</p>
+            <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-gray-100 break-words">
+              {review.reviewer_name || "Anonymous"}
+            </p>
             {review.reviewer_email ? (
-              <p className="text-xs sm:text-sm text-slate-500 truncate" title={review.reviewer_email}>{review.reviewer_email}</p>
+              <p
+                className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 truncate"
+                title={review.reviewer_email}
+              >
+                {review.reviewer_email}
+              </p>
             ) : (
-              <p className="text-xs sm:text-sm text-slate-400">No email provided</p>
+              <p className="text-xs sm:text-sm text-slate-400 dark:text-gray-500">
+                No email provided
+              </p>
             )}
           </div>
           <div className="flex-shrink-0">
-            <StarRating rating={review.rating} size={16} label={`${review.reviewer_name || "Reviewer"} rating`} />
+            <StarRating
+              rating={review.rating}
+              size={16}
+              label={`${review.reviewer_name || "Reviewer"} rating`}
+            />
           </div>
         </div>
-        <p className="text-xs sm:text-sm font-semibold text-blue-700 break-words">{review.product_title}</p>
-        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 break-words whitespace-pre-wrap">{review.review}</p>
+        <p className="text-xs sm:text-sm font-semibold text-blue-700 dark:text-blue-400 break-words">
+          {review.product_title}
+        </p>
+        <p className="text-xs sm:text-sm leading-relaxed text-slate-700 dark:text-gray-300 break-words whitespace-pre-wrap">
+          {review.review}
+        </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-slate-100 pt-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-slate-100 dark:border-gray-700 pt-3">
         {attachments.length > 0 ? (
           attachments.map((image, index) => (
             <img
               key={index}
-              src={image}
+              src={resolveStoredImageUrl(image, API_BASE)}
               alt={`Review attachment ${index + 1}`}
               className={imageClass}
+              onError={onProductImageError}
             />
           ))
         ) : (
@@ -192,23 +235,31 @@ function ReviewRow({ review }) {
   );
 }
 
-function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear, disabled = false }) {
+function EditableLinkRow({
+  label,
+  placeholder,
+  value,
+  onChange,
+  onSave,
+  onClear,
+  isSaving = false,
+  saveLabel = "Save",
+  savingLabel = "Saving...",
+}) {
   return (
-    <div className="space-y-2 rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/60 p-3 sm:p-4 shadow-none sm:shadow-sm">
-      <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
+    <div className="space-y-2 rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/60 dark:sm:bg-gray-800 p-3 sm:p-4 shadow-none sm:shadow-sm">
+      <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
         <span>{label}</span>
         <button
           type="button"
           onClick={(e) => {
-            if (disabled) return;
             e.preventDefault();
             e.stopPropagation();
             onClear();
           }}
-          disabled={disabled}
-          className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
         >
-          Delete
+          Clear
         </button>
       </div>
       <input
@@ -216,24 +267,24 @@ function EditableLinkRow({ label, placeholder, value, onChange, onSave, onClear,
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+        className="w-full rounded-lg border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-xs sm:text-sm text-slate-700 dark:text-gray-100 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800"
       />
       <div className="flex justify-end">
         <button
           type="button"
-          id={`save-${label.toLowerCase().replace(/\s+/g, '-')}-button`}
+          id={`save-${label.toLowerCase().replace(/\s+/g, "-")}-button`}
           onClick={(e) => {
-            if (disabled) return;
+            if (isSaving) return;
             e.preventDefault();
             e.stopPropagation();
             onSave();
           }}
-          disabled={disabled}
+          disabled={isSaving}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
-          className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+          className={`${primaryActionButtonClass} ${isSaving ? "opacity-60 cursor-not-allowed" : ""}`}
         >
-          {disabled ? "Saving..." : "Save"}
+          {isSaving ? savingLabel : saveLabel}
         </button>
       </div>
     </div>
@@ -248,7 +299,11 @@ function MyProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState("");
   const [bio, setBio] = useState("");
   const [instagram, setInstagram] = useState("");
-  const [feedback, setFeedback] = useState({ message: "", tone: "success" });
+  const [feedback, setFeedback] = useState({
+    message: "",
+    tone: "success",
+    placement: null,
+  });
   const [avatarError, setAvatarError] = useState("");
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingInstagram, setIsSavingInstagram] = useState(false);
@@ -275,7 +330,10 @@ function MyProfilePage() {
         setInstagram(data.instagram || "");
       } catch (err) {
         if (!isMounted) return;
-        const message = err instanceof Error ? err.message : "Unable to load profile information. Please try again later.";
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Unable to load profile information. Please try again later.";
         setError(message);
       } finally {
         if (isMounted) setIsLoading(false);
@@ -294,21 +352,15 @@ function MyProfilePage() {
     };
   }, []);
 
-  const showFeedback = (message, tone = "success") => {
-    setFeedback({ message, tone });
+  const showFeedback = (message, tone = "success", placement = null) => {
+    setFeedback({ message, tone, placement });
     if (feedbackTimerRef.current) {
       clearTimeout(feedbackTimerRef.current);
     }
-    feedbackTimerRef.current = setTimeout(() => setFeedback({ message: "", tone: "success" }), 2400);
-  };
-
-  const handleFieldSave = (label) => {
-    showFeedback(`${label} saved locally`);
-  };
-
-  const handleFieldClear = (label, setter) => {
-    setter("");
-    showFeedback(`${label} cleared`);
+    feedbackTimerRef.current = setTimeout(
+      () => setFeedback({ message: "", tone: "success", placement: null }),
+      2400,
+    );
   };
 
   const ratingValue = useMemo(() => {
@@ -331,9 +383,8 @@ function MyProfilePage() {
 
     // Validate file size
     if (file.size > MAX_BYTES) {
-      const errorMsg = "Image is too large. Maximum file size is 2 MB.";
+      const errorMsg = "Image is too large. Maximum file size is 10 MB.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -342,7 +393,6 @@ function MyProfilePage() {
     if (!isAllowedType(file)) {
       const errorMsg = "Only JPG/JPEG, PNG, and WEBP images are allowed.";
       setAvatarError(errorMsg);
-      showFeedback(errorMsg, "error");
       event.target.value = null; // Clear the input
       return;
     }
@@ -367,16 +417,16 @@ function MyProfilePage() {
       setAvatarPreview(finalUrl);
       updateProfileState({ image_url: finalUrl });
       setAvatarError(""); // Clear any errors on success
-      showFeedback("Profile photo updated");
+      showFeedback("Profile photo updated", "success", "avatar");
     } catch (err) {
       if (blobUrlRef.current) {
         URL.revokeObjectURL(blobUrlRef.current);
         blobUrlRef.current = null;
       }
       setAvatarPreview(fallback);
-      const message = err instanceof Error ? err.message : "Unable to update profile photo.";
+      const message =
+        err instanceof Error ? err.message : "Unable to update profile photo.";
       setAvatarError(message);
-      showFeedback(message, "error");
     } finally {
       setAvatarUploading(false);
     }
@@ -396,11 +446,12 @@ function MyProfilePage() {
       const sanitized = (updated.bio ?? value ?? "").slice(0, 200);
       setBio(sanitized);
       updateProfileState({ bio: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "bio");
     } catch (err) {
       setBio(previousBio);
-      const message = err instanceof Error ? err.message : "Unable to update bio.";
-      showFeedback(message, "error");
+      const message =
+        err instanceof Error ? err.message : "Unable to update bio.";
+      showFeedback(message, "error", "bio");
     } finally {
       setIsSavingBio(false);
     }
@@ -424,11 +475,19 @@ function MyProfilePage() {
     const previous = instagram;
     const trimmed = value.trim();
     if (trimmed.length > 150) {
-      showFeedback("Instagram link must be 150 characters or fewer.", "error");
+      showFeedback(
+        "Instagram link must be 150 characters or fewer.",
+        "error",
+        "instagram",
+      );
       return;
     }
     if (!isValidInstagramUrl(trimmed)) {
-      showFeedback("Please enter a valid Instagram profile link.", "error");
+      showFeedback(
+        "Please enter a valid Instagram profile link.",
+        "error",
+        "instagram",
+      );
       return;
     }
     setInstagram(trimmed);
@@ -438,32 +497,42 @@ function MyProfilePage() {
       const sanitized = updated.instagram ?? trimmed ?? "";
       setInstagram(sanitized);
       updateProfileState({ instagram: sanitized });
-      showFeedback(successMessage);
+      showFeedback(successMessage, "success", "instagram");
     } catch (err) {
       setInstagram(previous);
-      const message = err instanceof Error ? err.message : "Unable to update Instagram link.";
-      showFeedback(message, "error");
+      const message =
+        err instanceof Error ? err.message : "Unable to update Instagram link.";
+      showFeedback(message, "error", "instagram");
     } finally {
       setIsSavingInstagram(false);
     }
   };
 
-  const handleBioSave = () => persistBio(bio, "Bio saved");
-  const handleBioClear = () => persistBio("", "Bio cleared");
-  const handleInstagramSave = () => persistInstagram(instagram, "Instagram saved");
-  const handleInstagramClear = () => persistInstagram("", "Instagram deleted");
+  const handleBioSave = () =>
+    persistBio(bio, bio.trim() === "" ? "Bio cleared" : "Bio saved");
+  /** Local-only: avoids save/loading UI on unrelated blue buttons until user clicks Save Bio */
+  const handleBioClear = () => setBio("");
+
+  const handleInstagramSave = () =>
+    persistInstagram(
+      instagram,
+      instagram.trim() === "" ? "Instagram cleared" : "Instagram saved",
+    );
+  const handleInstagramClear = () => setInstagram("");
 
   const reviewList = profile?.reviews ?? [];
   const bioRemaining = 200 - bio.length;
   const socialFields = [
     {
       label: "Instagram",
+      feedbackPlacement: "instagram",
       value: instagram,
       setter: (next) => setInstagram(next.slice(0, 150)),
       placeholder: "https://instagram.com/yourhandle",
       onSave: handleInstagramSave,
       onClear: handleInstagramClear,
-      disabled: isSavingInstagram,
+      isSaving: isSavingInstagram,
+      saveLabel: "Save Instagram",
     },
   ];
 
@@ -480,21 +549,23 @@ function MyProfilePage() {
           }
         }
       `}</style>
-      <div 
-        className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pb-4 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 lg:px-10 mobile-scrollbar-hide"
-      >
+      <div className="flex h-full w-full flex-col items-center overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white via-slate-50 to-blue-50/30 px-3 pt-6 pb-12 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 sm:px-4 sm:pt-8 sm:pb-16 lg:px-10 lg:pt-10 lg:pb-20 mobile-scrollbar-hide">
         {isLoading ? (
-          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500">Loading profile...</div>
+          <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-slate-500 dark:text-gray-400">
+            Loading profile...
+          </div>
         ) : error ? (
-          <div className="flex h-full w-full items-center justify-center text-center text-red-600">{error}</div>
+          <div className="flex h-full w-full items-center justify-center text-center text-red-600 dark:text-red-400">
+            {error}
+          </div>
         ) : (
-          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-6 sm:gap-8 overflow-visible min-h-0 xl:flex-row xl:gap-10">
-            <section className="flex w-full flex-col gap-4 sm:gap-6 xl:max-w-[520px]">
-              <div className="rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
+          <div className="flex w-full max-w-[1500px] flex-1 flex-col gap-8 sm:gap-10 overflow-visible min-h-0 xl:flex-row xl:gap-12">
+            <section className="flex w-full flex-col gap-6 sm:gap-8 xl:max-w-[520px]">
+              <div className="rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow">
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept={PROFILE_PHOTO_ACCEPT}
                   onChange={handleAvatarChange}
                   className="hidden"
                 />
@@ -503,42 +574,89 @@ function MyProfilePage() {
                     type="button"
                     onClick={handleAvatarClick}
                     disabled={avatarUploading}
-                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white bg-slate-100 shadow-lg ring-2 sm:ring-4 ring-blue-100 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
+                    className={`relative flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-full border-4 border-white dark:border-gray-800 bg-slate-100 dark:bg-gray-700 shadow-lg ring-2 sm:ring-4 ring-blue-100 dark:ring-blue-900 transition hover:brightness-105 flex-shrink-0 ${avatarUploading ? "cursor-not-allowed opacity-70" : ""}`}
                   >
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Profile" className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-semibold text-slate-500">Upload photo</span>
-                    )}
-                    <span className="absolute bottom-1.5 rounded-full bg-blue-600 px-3 py-0.5 text-xs font-semibold text-white shadow">
+                    <img
+                      src={
+                        avatarPreview
+                          ? withFallbackImage(
+                              resolveStoredImageUrl(avatarPreview, API_BASE),
+                            )
+                          : FALLBACK_IMAGE_URL
+                      }
+                      alt=""
+                      className="h-full w-full rounded-full object-cover"
+                      onError={onProductImageError}
+                    />
+                    <span className="absolute bottom-1.5 rounded-md bg-blue-600 px-3 py-0.5 text-xs font-medium text-white shadow-sm dark:bg-blue-800">
                       {avatarUploading ? "Uploading..." : "Edit"}
                     </span>
                   </button>
-                  <div className="space-y-1 text-center sm:text-left text-slate-900 min-w-0 max-w-full overflow-hidden flex-1">
-                    <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">{profile?.name}</p>
-                    <p className="text-xs sm:text-sm break-all">@{profile?.username}</p>
-                    <p className="text-xs sm:text-sm truncate" title={profile?.email}>{profile?.email}</p>
+                  <div className="space-y-1 text-center sm:text-left text-slate-900 dark:text-gray-100 min-w-0 max-w-full overflow-hidden flex-1">
+                    <p className="text-xl sm:text-2xl font-serif font-semibold truncate block">
+                      {profile?.name}
+                    </p>
+                    <p className="text-xs sm:text-sm break-all dark:text-gray-300">
+                      @{profile?.username}
+                    </p>
+                    <p
+                      className="text-xs sm:text-sm truncate dark:text-gray-300"
+                      title={profile?.email}
+                    >
+                      {profile?.email}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 flex flex-col items-center gap-1 text-center text-xs sm:text-sm text-slate-500 sm:items-start sm:text-left">
-                  <StarRating rating={ratingValue} size={20} label="Average rating" />
-                  <span className="px-2 sm:px-0">Average rating across dorm transactions</span>
+                  <StarRating
+                    rating={ratingValue}
+                    size={20}
+                    label="Average rating"
+                  />
+                  <span className="px-2 sm:px-0">
+                    Average rating across dorm transactions
+                  </span>
                 </div>
                 {avatarError && (
                   <div className="mt-4 rounded-lg bg-rose-50 dark:bg-rose-900/30 border-2 border-rose-200 dark:border-rose-700 p-3">
                     <div className="flex items-start gap-2">
-                      <svg className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
-                      <p className="text-sm font-medium text-rose-800 dark:text-rose-200">{avatarError}</p>
+                      <p className="text-sm font-medium text-rose-800 dark:text-rose-200">
+                        {avatarError}
+                      </p>
                     </div>
                   </div>
                 )}
+                {feedback.placement === "avatar" && feedback.message && (
+                  <p
+                    className={`mt-3 text-sm font-medium ${
+                      feedback.tone === "error"
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    {feedback.message}
+                  </p>
+                )}
               </div>
 
-              <div className="flex flex-1 flex-col rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/80 p-4 sm:p-6 shadow-none sm:shadow">
+              <div className="flex flex-1 flex-col rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/80 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow mb-6 sm:mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <h2 className="text-base sm:text-lg font-semibold text-slate-900">Public Details</h2>
+                  <h2 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-gray-100">
+                    Public Details
+                  </h2>
                   {profile?.username && (
                     <button
                       type="button"
@@ -547,31 +665,36 @@ function MyProfilePage() {
                         buttonClickRef.current = true;
                         e.preventDefault();
                         e.stopPropagation();
-                        navigate(`/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`);
-                        setTimeout(() => { buttonClickRef.current = false; }, 300);
+                        navigate(
+                          `/app/profile?username=${encodeURIComponent(profile.username)}&preview=true`,
+                        );
+                        setTimeout(() => {
+                          buttonClickRef.current = false;
+                        }, 300);
                       }}
-                      className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                      className={primaryActionButtonClass}
                     >
                       View Public Profile Display
                     </button>
                   )}
                 </div>
-                <div className="mt-4 space-y-3 sm:space-y-4">
-                  <div className="rounded-none sm:rounded-2xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
-                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700">
+                <div className="mt-4 space-y-4 sm:space-y-5">
+                  <div className="rounded-none sm:rounded-lg border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/70 dark:sm:bg-gray-800/70 p-3 sm:p-4 shadow-none sm:shadow-sm">
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-700 dark:text-gray-200">
                       <span>Bio</span>
                       <button
                         type="button"
                         onClick={(e) => {
-                          if (buttonClickRef.current || isSavingBio) return;
+                          if (buttonClickRef.current) return;
                           buttonClickRef.current = true;
                           e.preventDefault();
                           e.stopPropagation();
                           handleBioClear();
-                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                          setTimeout(() => {
+                            buttonClickRef.current = false;
+                          }, 300);
                         }}
-                        disabled={isSavingBio}
-                        className={`text-xs font-medium text-rose-500 hover:text-rose-600 touch-manipulation py-1 px-2 ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className="text-xs font-medium text-rose-500 dark:text-rose-400 hover:text-rose-600 dark:hover:text-rose-300 touch-manipulation py-1 px-2"
                       >
                         Clear
                       </button>
@@ -597,66 +720,96 @@ function MyProfilePage() {
                           e.preventDefault();
                           e.stopPropagation();
                           handleBioSave();
-                          setTimeout(() => { buttonClickRef.current = false; }, 300);
+                          setTimeout(() => {
+                            buttonClickRef.current = false;
+                          }, 300);
                         }}
                         disabled={isSavingBio}
                         onMouseDown={(e) => e.stopPropagation()}
                         onMouseUp={(e) => e.stopPropagation()}
-                        className={`rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
+                        className={`${primaryActionButtonClass} ${isSavingBio ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
                         {isSavingBio ? "Saving..." : "Save Bio"}
                       </button>
                     </div>
+                    {feedback.placement === "bio" && feedback.message && (
+                      <p
+                        className={`mt-3 text-sm font-medium ${
+                          feedback.tone === "error"
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                      >
+                        {feedback.message}
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-3">
                     {socialFields.map((field) => (
-                      <EditableLinkRow
-                        key={field.label}
-                        label={field.label}
-                        placeholder={field.placeholder}
-                        value={field.value}
-                        onChange={(event) => field.setter(event.target.value)}
-                        onSave={field.onSave ?? (() => handleFieldSave(field.label))}
-                        onClear={field.onClear ?? (() => handleFieldClear(field.label, field.setter))}
-                        disabled={Boolean(field.disabled)}
-                      />
+                      <div key={field.label}>
+                        <EditableLinkRow
+                          label={field.label}
+                          placeholder={field.placeholder}
+                          value={field.value}
+                          onChange={(event) => field.setter(event.target.value)}
+                          onSave={field.onSave}
+                          onClear={field.onClear}
+                          isSaving={Boolean(field.isSaving)}
+                          saveLabel={field.saveLabel}
+                          savingLabel={field.savingLabel}
+                        />
+                        {field.feedbackPlacement &&
+                          feedback.placement === field.feedbackPlacement &&
+                          feedback.message && (
+                            <p
+                              className={`mt-2 text-sm font-medium ${
+                                feedback.tone === "error"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-emerald-600 dark:text-emerald-400"
+                              }`}
+                            >
+                              {feedback.message}
+                            </p>
+                          )}
+                      </div>
                     ))}
                   </div>
                 </div>
-                {feedback.message && (
-                  <p
-                    className={`mt-4 text-sm font-medium ${
-                      feedback.tone === "error" ? "text-rose-600" : "text-emerald-600"
-                    }`}
-                  >
-                    {feedback.message}
-                  </p>
-                )}
               </div>
             </section>
 
-            <section className="flex flex-1 flex-col overflow-visible xl:overflow-hidden rounded-none sm:rounded-3xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white/90 p-4 sm:p-6 shadow-none sm:shadow xl:min-h-0">
+            <section className="flex flex-1 flex-col overflow-visible xl:overflow-hidden rounded-none sm:rounded-xl border-0 sm:border border-slate-100 dark:border-gray-700 bg-transparent sm:bg-white/90 dark:sm:bg-gray-800 p-4 sm:p-6 shadow-none sm:shadow xl:min-h-0">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Reviews</h2>
-                  <p className="text-xs sm:text-sm text-slate-500">{reviewList.length} recorded review{reviewList.length === 1 ? "" : "s"}</p>
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-gray-100">
+                    Reviews
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400">
+                    {reviewList.length} recorded review
+                    {reviewList.length === 1 ? "" : "s"}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigate("/app/setting/buyer-reviews")}
-                  className="rounded-full bg-blue-600 px-4 py-2 sm:py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-500 transition-colors touch-manipulation"
+                  className={primaryActionButtonClass}
                 >
                   View how sellers have rated you
                 </button>
               </div>
               <div className="mt-4 flex-1 xl:overflow-y-auto xl:pr-1">
                 {reviewList.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-sm text-slate-400">No reviews yet.</div>
+                  <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                    No reviews yet.
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-4 pb-4">
                     {reviewList.map((review, index) => (
-                      <ReviewRow key={review.review_id || review.reviewer_email || index} review={review} />
+                      <ReviewRow
+                        key={review.review_id || review.reviewer_email || index}
+                        review={review}
+                      />
                     ))}
                   </div>
                 )}

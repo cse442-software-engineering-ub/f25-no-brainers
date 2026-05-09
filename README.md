@@ -1,8 +1,18 @@
-# CSE442 Fall 2025 No Brainers Group Project
+# CSE442 Fall 2025 "No Brainers" Group Project
 
 This repository contains the "Dorm Mart" web application, built with a React frontend and a PHP backend with XAMMP.
 
 _Created for CSE-442: Software Engineering Concepts, The University at Buffalo._
+
+## Production Release:
+
+**https://dormmart.me/**
+
+## For users without a UB account wanting to demo the site:
+
+**Username:** `testuser@buffalo.edu`
+
+**Password:** `1234!`
 
 # Dorm Mart: The Complete Student Marketplace
 
@@ -59,12 +69,6 @@ workflow in one place!
 **Email:** PHPMailer  
 **Dev Server:** XAMPP (Apache + MySQL)
 
-## Production Server
-
-**Check out the latest production release on UB Wifi: https://cattle.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login**
-
-_You can also view the test server on UB Wifi: https://aptitude.cse.buffalo.edu/CSE442/2025-Fall/cse-442j/#/login_
-
 ## Key Folders
 
 - `dorm-mart/src/` — React frontend (pages, components, context)
@@ -73,13 +77,7 @@ _You can also view the test server on UB Wifi: https://aptitude.cse.buffalo.edu/
 - `dorm-mart/public/` — Static assets
 - `dorm-mart/migrations/` — Database construction files
 
-For local setup and deployment details, see `README.project_setup.md`.
-
 For detailed setup instructions, deployment guides, and production build steps, see `README.project_setup.md`.
-
-# For users without a UB account for demoing:
-**Username:** testuser@buffalo.edu
-**Password: **1234!
 
 # Development Team
 

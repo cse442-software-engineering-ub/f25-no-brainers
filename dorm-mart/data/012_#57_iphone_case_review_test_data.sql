@@ -1,9 +1,7 @@
 START TRANSACTION;
--- 012_iphone_case_review_test_data.sql
--- Seed data for buyer review submission tests
--- Creates a completed purchase: iPhone Case sold by testuserschedulered@buffalo.edu to testuser@buffalo.edu
--- Simulates organic flow: Message Seller -> Scheduled Purchase -> Confirm Purchase -> Review (user writes it)
--- Note: Review is NOT pre-seeded - user writes it themselves via the UI
+-- Seed: Story #57 iPhone Case buyer review flow.
+-- Purpose: creates a completed iPhone Case purchase for review-submission testing.
+-- Notes: the review is not pre-seeded; the buyer writes it through the UI.
 
 -- Get user IDs (users must exist from previous migrations/data files)
 -- If users don't exist, these will be NULL and subsequent operations will fail
@@ -222,7 +220,9 @@ INSERT INTO scheduled_purchase_requests (
   verification_code,
   description,
   status,
-  buyer_response_at
+  buyer_response_at,
+  created_at,
+  updated_at
 ) VALUES (
   @product_id,
   @seller_id,
@@ -233,6 +233,8 @@ INSERT INTO scheduled_purchase_requests (
   LPAD((@product_id * 100 + UNIX_TIMESTAMP() % 10000) % 10000, 4, '0'),
   NULL,
   'accepted',
+  DATE_SUB(NOW(), INTERVAL 3 DAY),
+  DATE_SUB(NOW(), INTERVAL 5 DAY),
   DATE_SUB(NOW(), INTERVAL 3 DAY)
 );
 
@@ -336,4 +338,3 @@ ON DUPLICATE KEY UPDATE
 --   Image: iphone-case-review-image.jpg (uploaded during test)
 
 COMMIT;
-

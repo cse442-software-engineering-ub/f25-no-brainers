@@ -1,13 +1,36 @@
 <?php
+// Migration runner — block all web access; run via CLI only
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
+
+// Enable error reporting for debugging (remove in production)
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 
-// Include security utilities for escapeHtml function
-require_once __DIR__ . '/../security/security.php';
+try {
+    // Include security utilities for escape_html function
+    require_once __DIR__ . '/../security/security.php';
 
-// reuse your existing env loader + $conn creation
-require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
+    // reuse your existing env loader + $conn creation
+    require __DIR__ . '/db_connect.php'; // or paste your env+mysqli code here
 
-$conn = db();
+    $conn = db();
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        "success" => false,
+        "message" => "Failed to initialize: " . $e->getMessage(),
+        "file" => $e->getFile(),
+        "line" => $e->getLine()
+    ]);
+    exit;
+}
 
 // create a table that records which migration files have been applied
 $conn->query("
@@ -41,7 +64,6 @@ foreach ($files as $path) {
   if (!$conn->multi_query($sql)) {
     $err = $conn->error;
     $conn->rollback();
-    // Note: No HTML encoding needed for JSON - React handles XSS protection
     echo json_encode(["success" => false, "message" => "Failed: " . $name . " — " . $err]);
     exit;
   }
@@ -63,5 +85,5 @@ foreach ($files as $path) {
 }
 
 // XSS PROTECTION: Escape filenames before outputting in JSON (defense-in-depth)
-$escapedRan = array_map('escapeHtml', $ran);
+$escapedRan = array_map('escape_html', $ran);
 echo json_encode(["success" => true, "applied" => $escapedRan]);
